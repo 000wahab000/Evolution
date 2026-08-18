@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>evolved locomotion — 19 day build plan</title>
+<style>
+  :root{
+    --bg:#0d0f0d;
+    --bg-panel:#151714;
+    --line:#2a2d28;
+    --ink:#e8e6de;
+    --ink-dim:#8f9488;
+    --ink-dimmer:#5c6058;
+    --accent:#9fef6b;
+    --accent-dim:#5a7a3f;
+    --warn:#ef8b6b;
+    --warn-dim:#7a4a35;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--accent);color:#0d0f0d;}
+
+  .wrap{max-width:900px;margin:0 auto;padding:0 20px 100px;width:100%;}
+
+  header{padding:48px 0 32px;border-bottom:1px solid var(--line);margin-bottom:8px;}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:16px;display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:'';width:8px;height:8px;background:var(--accent);display:inline-block;flex:none;}
+  h1{font-family:var(--mono);font-size:clamp(24px,6vw,38px);font-weight:700;margin:0 0 12px;line-height:1.2;}
+  h1 span{color:var(--ink-dim);font-weight:400;display:block;font-size:0.6em;margin-top:4px;}
+  .sub{color:var(--ink-dim);font-size:15px;max-width:64ch;margin-bottom:24px;}
+  .countdown-row{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:13px;}
+  .stat{border:1px solid var(--line);background:var(--bg-panel);padding:10px 14px;min-width:100px;}
+  .stat .n{font-size:19px;font-weight:700;color:var(--accent);display:block;}
+  .stat .l{color:var(--ink-dimmer);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;}
+
+  nav{
+    position:sticky;top:0;background:rgba(13,15,13,0.94);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);z-index:50;margin:0 0 36px;padding:12px 0;
+  }
+  nav .wrap{padding:0 20px;}
+  nav ul{list-style:none;margin:0;padding:0;display:flex;gap:4px;overflow-x:auto;font-family:var(--mono);font-size:12px;}
+  nav a{color:var(--ink-dim);text-decoration:none;padding:6px 10px;border:1px solid transparent;white-space:nowrap;flex:none;}
+  nav a:hover{color:var(--accent);border-color:var(--line);}
+
+  section{margin-bottom:48px;scroll-margin-top:64px;}
+  .section-head{
+    display:flex;align-items:baseline;gap:12px;margin-bottom:6px;
+    border-bottom:1px solid var(--line);padding-bottom:12px;flex-wrap:wrap;
+  }
+  .phase-tag{
+    font-family:var(--mono);font-size:11px;color:var(--bg);background:var(--accent);
+    padding:3px 9px;font-weight:700;letter-spacing:0.04em;flex:none;
+  }
+  .phase-tag.warn{background:var(--warn);}
+  h2{font-family:var(--mono);font-size:18px;margin:0;font-weight:700;}
+  .day-range{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-dimmer);}
+  .phase-note{color:var(--ink-dim);font-size:14px;margin:12px 0 18px;max-width:68ch;}
+
+  /* DAY CARD — simple stacked block, no absolute positioning, no fragile grid */
+  .day{
+    border:1px solid var(--line);
+    border-left:3px solid var(--ink-dimmer);
+    background:var(--bg-panel);
+    padding:14px 16px;
+    margin-bottom:10px;
+  }
+  .day.checkpoint{border-left-color:var(--accent);}
+  .day-num{
+    font-family:var(--mono);font-size:11px;color:var(--accent);
+    text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;
+  }
+  .day-title{
+    font-weight:600;font-size:15px;margin-bottom:6px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .day-title code{font-family:var(--mono);font-size:11px;color:var(--ink-dimmer);font-weight:400;}
+  .day-desc{color:var(--ink-dim);font-size:13.5px;max-width:64ch;}
+  .badge{
+    font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
+    padding:2px 7px;border:1px solid var(--accent-dim);color:var(--accent);flex:none;
+  }
+  .badge.buffer{border-color:var(--ink-dimmer);color:var(--ink-dimmer);}
+  .badge.risk{border-color:var(--warn-dim);color:var(--warn);}
+
+  .checkpoint-box{
+    border:1px solid var(--accent-dim);
+    background:rgba(159,239,107,0.05);
+    padding:16px 18px;
+    margin:16px 0 8px;
+  }
+  .checkpoint-box .ck-label{
+    font-family:var(--mono);font-size:11px;color:var(--accent);
+    text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;
+  }
+  .checkpoint-box p{margin:0 0 8px;font-size:14px;color:var(--ink);}
+  .checkpoint-box p:last-child{margin-bottom:0;}
+  .checkpoint-box p.rule{color:var(--warn);font-size:12.5px;font-family:var(--mono);}
+
+  .cutlist{background:var(--bg-panel);border:1px solid var(--line);padding:18px 20px;}
+  .cutlist h3{
+    font-family:var(--mono);font-size:12px;color:var(--warn);
+    text-transform:uppercase;letter-spacing:0.07em;margin:0 0 12px;
+  }
+  .cutlist ul{margin:0;padding:0;list-style:none;}
+  .cutlist li{
+    font-size:13.5px;color:var(--ink-dim);padding:8px 0;
+    border-bottom:1px solid var(--line);display:flex;gap:10px;
+  }
+  .cutlist li:last-child{border-bottom:none;}
+  .cutlist li::before{content:'x';color:var(--warn-dim);font-family:var(--mono);flex:none;}
+
+  .specwrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px;}
+  th{
+    font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--ink-dimmer);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);
+  }
+  td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--ink-dim);vertical-align:top;}
+  td.k{color:var(--ink);font-weight:600;white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+
+  .truth{
+    border-left:3px solid var(--warn);background:var(--bg-panel);
+    padding:16px 18px;margin:18px 0;font-size:14px;color:var(--ink);
+  }
+  .truth b{
+    color:var(--warn);font-family:var(--mono);font-size:11px;
+    text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:8px;
+  }
+
+  .stackgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:18px 0;}
+  .stackgrid > div{background:var(--bg-panel);padding:14px 16px;}
+  .stackgrid .k{font-family:var(--mono);font-size:10.5px;color:var(--ink-dimmer);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .stackgrid .v{font-size:14px;color:var(--ink);}
+
+  footer{
+    border-top:1px solid var(--line);padding-top:20px;margin-top:36px;
+    color:var(--ink-dimmer);font-family:var(--mono);font-size:11px;text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <ul>
+      <li><a href="#brutal">truth</a></li>
+      <li><a href="#stack">stack</a></li>
+      <li><a href="#p0">ph 0</a></li>
+      <li><a href="#p05">ph 0.5</a></li>
+      <li><a href="#p1">ph 1</a></li>
+      <li><a href="#p2">ph 2</a></li>
+      <li><a href="#p3">ph 3</a></li>
+      <li><a href="#p4">ph 4</a></li>
+      <li><a href="#p5">ph 5</a></li>
+      <li><a href="#cuts">cuts</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">solo build · aug 12 to aug 31</div>
+    <h1>evolved locomotion<span>full build plan, 19 days</span></h1>
+    <div class="sub">genetic algorithm evolves neural net weights that drive a segmented creature's joints. quadruped, legs in pairs, from-scratch nn + ga, physics via library.</div>
+    <div class="countdown-row">
+      <div class="stat"><span class="n">19</span><span class="l">days total</span></div>
+      <div class="stat"><span class="n">2</span><span class="l">checkpoints</span></div>
+      <div class="stat"><span class="n">day 12</span><span class="l">core proof</span></div>
+      <div class="stat"><span class="n">day 18</span><span class="l">code freeze</span></div>
+    </div>
+  </header>
+
+  <section id="brutal">
+    <div class="truth">
+      <b>the rule that overrides everything below</b>
+      neural net + genetic algorithm are your from-scratch depth. non-negotiable, and your strength. physics is a library on purpose — not the point, no days to spare on it. if day 10 or 11 shows the GA not converging with 4 legs, drop to 2 legs. don't push through on hope. checkpoints are gates.
+    </div>
+  </section>
+
+  <section id="stack">
+    <div class="section-head"><span class="phase-tag">stack</span><h2>locked decisions</h2></div>
+    <div class="stackgrid">
+      <div><div class="k">runtime</div><div class="v">node.js + browser canvas</div></div>
+      <div><div class="k">physics</div><div class="v">planck.js — box2d port, stable for joints</div></div>
+      <div><div class="k">brain</div><div class="v">small nn, hand-written, no ml libraries</div></div>
+      <div><div class="k">learning</div><div class="v">hand-written ga — mutation, crossover, selection</div></div>
+      <div><div class="k">body</div><div class="v">torso + legs in pairs, 1 segment + 1 joint per leg</div></div>
+      <div><div class="k">default target</div><div class="v">quadruped — 5 bodies, 4 joints</div></div>
+      <div><div class="k">no arms</div><div class="v">humanoid search space too large for solo/19 days</div></div>
+      <div><div class="k">head</div><div class="v">fixed shape, zero joints, visual only</div></div>
+    </div>
+  </section>
+
+  <section id="p0">
+    <div class="section-head"><span class="phase-tag">phase 0</span><h2>skeleton</h2><span class="day-range">days 1-2</span></div>
+    <p class="phase-note">prove the plumbing before touching the creature. physics step to render, nothing else.</p>
+
+    <div class="day">
+      <div class="day-num">day 1</div>
+      <div class="day-title">project setup + one static body <code>plumbing</code></div>
+      <div class="day-desc">node + planck.js installed. one static body rendered on canvas. confirm physics step to draw loop works end to end. no creature yet.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 2</div>
+      <div class="day-title">minimal jointed body, random torque <code>sanity check</code></div>
+      <div class="day-desc">2-3 rigid segments, 1-2 revolute joints. apply random torque manually, watch it flail. confirm joints don't explode or tangle before moving on.</div>
+    </div>
+  </section>
+
+  <section id="p05">
+    <div class="section-head"><span class="phase-tag">phase 0.5</span><h2>quadruped body</h2><span class="day-range">day 3</span></div>
+    <p class="phase-note">new work versus the minimal-body plan — earns its own day.</p>
+
+    <div class="day">
+      <div class="day-num">day 3</div>
+      <div class="day-title">torso + 4 legs <code>~5 bodies, 4 joints</code></div>
+      <div class="day-desc">torso root, 4 legs each with 1 segment + 1 hip-style joint. random torque per leg, confirm stability with the full joint count.</div>
+    </div>
+  </section>
+
+  <section id="p1">
+    <div class="section-head"><span class="phase-tag">phase 1</span><h2>the brain</h2><span class="day-range">days 4-6</span></div>
+    <p class="phase-note">transformers and knn from scratch means this should move fast. day 6 is likely buffer.</p>
+
+    <div class="day">
+      <div class="day-num">day 4-5</div>
+      <div class="day-title">small neural net, from scratch <code>no libraries</code> <span class="badge">core depth</span></div>
+      <div class="day-desc">inputs: 4x joint angle + angular velocity, torso tilt. small hidden layer. outputs: 4 torque values, one per leg.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 6</div>
+      <div class="day-title">wire net to joints, watch it flail <span class="badge buffer">likely buffer</span></div>
+      <div class="day-desc">replace day 2/3's random torque with live net output. one creature, one random-weight net. it should attempt to move, however badly.</div>
+    </div>
+
+    <div class="checkpoint-box">
+      <div class="ck-label">checkpoint — phase 1</div>
+      <p>neural net controls a physical quadruped body, end to end, even if the behavior is garbage.</p>
+    </div>
+  </section>
+
+  <section id="p2">
+    <div class="section-head"><span class="phase-tag warn">phase 2</span><h2>evolution — the heart of the project</h2><span class="day-range">days 7-12</span></div>
+    <p class="phase-note">most days go here on purpose. this is what the judge said he wants to see. 4-leg genome means a bigger search space than 1-2 joints — extra buffer day built in.</p>
+
+    <div class="day">
+      <div class="day-num">day 7</div>
+      <div class="day-title">genome + mutation + crossover <span class="badge buffer">low risk</span></div>
+      <div class="day-desc">genome = flat vector of net weights. mutation = gaussian noise at some rate. crossover = blend or split two parent genomes.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 8</div>
+      <div class="day-title">fitness function <span class="badge buffer">simple</span></div>
+      <div class="day-desc">horizontal distance traveled in a 5-10s trial window. planck gives position for free.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 9-10</div>
+      <div class="day-title">the generational loop <code>headless, node</code> <span class="badge risk">highest risk</span></div>
+      <div class="day-desc">population ~30-50. run each genome's trial headless, no rendering. score fitness. truncation selection, keep top ~20%, breed the rest. repeat until fitness trends upward.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 11</div>
+      <div class="day-title">degenerate solution debugging <span class="badge risk">near-certain</span></div>
+      <div class="day-desc">common failure: creatures learn to just topple forward and call it locomotion. fix with longer trials, penalize excessive rotation/falling, or require staying upright. budget this day specifically.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 12</div>
+      <div class="day-title">buffer — extra day for 4-leg complexity <span class="badge buffer">buffer</span></div>
+      <div class="day-desc">added versus the minimal-body plan. days 9-11 are the least predictable stretch of the build.</div>
+    </div>
+
+    <div class="checkpoint-box">
+      <div class="ck-label">checkpoint — phase 2 · the project lives or dies here</div>
+      <p>fitness-over-generations curve trending up, even roughly. a specific generation you can point to where behavior visibly shifted from flailing to purposeful — quadrupedal gait emerging.</p>
+      <p class="rule">if this isn't real by day 12, don't move to phase 3 on hope.</p>
+    </div>
+  </section>
+
+  <section id="p3">
+    <div class="section-head"><span class="phase-tag">phase 3</span><h2>demo legibility</h2><span class="day-range">days 13-16</span></div>
+    <p class="phase-note">start a long background training run the moment phase 2's loop is correct — don't wait for phase 3.</p>
+
+    <div class="day">
+      <div class="day-num">day 13</div>
+      <div class="day-title">demo mode decision <code>pre-trained replay = default</code></div>
+      <div class="day-desc">safe path is pre-trained + generation replay. live training only as a bonus if fast enough. decide now.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 14</div>
+      <div class="day-title">population rendering + live overlay</div>
+      <div class="day-desc">show several creatures per generation, not one. overlay generation number + best fitness live.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 15</div>
+      <div class="day-title">replay sequence <code>gen 1 to mid to late</code></div>
+      <div class="day-desc">clean before/during/after arc using your actual data. judge should grasp it in 15 seconds, no narration.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 16</div>
+      <div class="day-title">buffer <span class="badge buffer">buffer</span></div>
+      <div class="day-desc">rendering + sync bugs eat time unpredictably.</div>
+    </div>
+  </section>
+
+  <section id="p4">
+    <div class="section-head"><span class="phase-tag">phase 4</span><h2>stretch — conditional only</h2><span class="day-range">day 17</span></div>
+    <p class="phase-note">only if phase 2 landed clean and phase 3 finished early. pick exactly one.</p>
+
+    <div class="day">
+      <div class="day-num">day 17</div>
+      <div class="day-title">pick one, in order of value <span class="badge buffer">if ahead only</span></div>
+      <div class="day-desc">
+        1. variable leg count (2/4/6 toggle) — highest value, natural extension.<br>
+        2. second creature body type, compared side by side.<br>
+        3. alternate fitness function — speed or jump height.<br><br>
+        from-scratch physics is unlikely to be reachable now — known consequence of choosing the quadruped, not a failure.
+      </div>
+    </div>
+  </section>
+
+  <section id="p5">
+    <div class="section-head"><span class="phase-tag">phase 5</span><h2>lockdown</h2><span class="day-range">days 18-19</span></div>
+
+    <div class="day">
+      <div class="day-num">day 18</div>
+      <div class="day-title">code freeze + demo script <code>no new features</code></div>
+      <div class="day-desc">bug sweep only. rehearse the demo explanation out loud, no notes. be ready to state fitness function, mutation rate, selection method precisely.</div>
+    </div>
+    <div class="day">
+      <div class="day-num">day 19</div>
+      <div class="day-title">rest <code>do not touch code the night before</code></div>
+      <div class="day-desc">final buffer. done is done.</div>
+    </div>
+  </section>
+
+  <section id="cuts">
+    <div class="section-head"><span class="phase-tag warn">scope</span><h2>cut list — do not quietly add these back</h2></div>
+    <div class="cutlist">
+      <h3>explicitly out of scope for this build</h3>
+      <ul>
+        <li>arms, articulated head — too large a search space for 19 days solo</li>
+        <li>geopolitical simulation — original idea, correctly abandoned once the judge's preference was known</li>
+        <li>total war / strategy game — different codebase, different skills, no shared spine</li>
+        <li>physics from scratch — real stretch idea, but not before phase 2's checkpoint, now unlikely to fit</li>
+        <li>live training as the demo default — too risky live in front of a judge</li>
+        <li>historical mode, counterfactual mode, multi-run stats — artifacts of the old project</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="specs">
+    <div class="section-head"><span class="phase-tag">reference</span><h2>quick specs</h2></div>
+    <div class="specwrap">
+    <table>
+      <tr><th>parameter</th><th>value</th><th>note</th></tr>
+      <tr><td class="k">body</td><td>torso + 4 legs, 1 segment + 1 joint each</td><td>5 rigid bodies, 4 revolute joints</td></tr>
+      <tr><td class="k">nn inputs</td><td>4x (joint angle + angular velocity) + torso tilt</td><td>~9 inputs</td></tr>
+      <tr><td class="k">nn outputs</td><td>4 torque values</td><td>one per leg joint</td></tr>
+      <tr><td class="k">genome</td><td>flat vector of net weights</td><td>mutation = gaussian noise, crossover = blend/split</td></tr>
+      <tr><td class="k">fitness</td><td>horizontal distance in 5-10s trial</td><td>watch for degenerate "fall forward" solutions</td></tr>
+      <tr><td class="k">population</td><td>~30-50 genomes</td><td>run headless in node for speed</td></tr>
+      <tr><td class="k">selection</td><td>truncation, top ~20%</td><td>simple to start, don't over-engineer</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <footer>built aug 12 · deadline aug 31 · 19 days · checkpoints are gates, not suggestions</footer>
+
+</div>
+
+</body>
+</html>
