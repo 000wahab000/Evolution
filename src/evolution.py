@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 class Population:
-    def __init__(self, model_class, pop_size=50, mutation_rate=0.1, mutation_scale=0.2):
+    def __init__(self, model_class, pop_size=50, mutation_rate=0.15, mutation_scale=0.35):
         self.pop_size = pop_size
         self.mutation_rate = mutation_rate
         self.mutation_scale = mutation_scale
@@ -38,12 +38,12 @@ class Population:
         
         # Fill the rest
         while len(new_models) < self.pop_size:
-            if random.random() < 0.2:
-                # 20% purely mutate elites
+            if random.random() < 0.70:
+                # 70% purely mutate elites
                 parent = random.choice(elites)
                 new_models.append(self.mutate(parent))
             else:
-                # 80% crossover then mutate
+                # 30% crossover then mutate
                 parent1, parent2 = random.choices(elites, k=2)
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child)

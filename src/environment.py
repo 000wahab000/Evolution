@@ -2,7 +2,8 @@ import pymunk
 import numpy as np
 
 class CreatureEnv:
-    def __init__(self):
+    def __init__(self, fitness_mode="baseline"):
+        self.fitness_mode = fitness_mode
         self.space = pymunk.Space()
         self.space.gravity = (0, 900)  # PyGame Y points down, so positive gravity is down
         self.create_ground()
@@ -65,7 +66,7 @@ class CreatureEnv:
             self.motors.append(motor)
 
     def reset(self):
-        self.__init__()
+        self.__init__(fitness_mode=self.fitness_mode)
         return self.get_state()
 
     def step(self, actions):
@@ -79,17 +80,18 @@ class CreatureEnv:
         
         state = self.get_state()
         
-        # Calculate incremental reward
-        forward_progress = self.torso.position.x - old_x
-        # Reduce energy penalty heavily so it isn't afraid to move its legs
-        energy_penalty = sum(abs(float(a)) for a in actions) * 0.005
-        # Penalize tilting too much so it tries to stay upright
-        tilt_penalty = abs(self.torso.angle) * 0.05
+        # Base displacement
+        reward = self.torso.position.x - old_x
         
-        reward = forward_progress - energy_penalty - tilt_penalty
+        if self.fitness_mode == "tilt_penalized" or self.fitness_mode == "all_penalties":
+            reward -= 20 * abs(self.torso.angle) / 60.0
+            
+        if self.fitness_mode == "energy_penalized" or self.fitness_mode == "all_penalties":
+            energy_cost = sum(abs(float(a)) for a in actions)
+            reward -= energy_cost * 0.05 / 60.0
         
-        # Check if the creature has fallen over (angle > 1.2 rad or < -1.2 rad)
-        fallen = abs(self.torso.angle) > 1.2
+        # Fall condition
+        fallen = abs(self.torso.angle) > 1.2 or self.torso.position.y > 520
         done = self.steps > 600 or fallen
             
         return state, reward, done, fallen

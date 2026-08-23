@@ -12,7 +12,7 @@ class CreatureBrain(nn.Module):
         )
         # Initialize weights with standard normal for GA mutation baseline
         for param in self.net.parameters():
-            nn.init.normal_(param, 0, 1)
+            nn.init.normal_(param, 0, 0.25)
 
     def forward(self, x):
         return self.net(x)
