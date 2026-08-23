@@ -1,0 +1,8 @@
+torch>=2.13.0
+pymunk>=7.3.0
+pygame>=2.6.1
+numpy>=2.5.1
+
+[dev]
+pytest>=8.0.0
+ruff>=0.3.0

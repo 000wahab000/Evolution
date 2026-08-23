@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: evolution-simulation
+Version: 0.1.0
+Summary: A simulation for evolving creature locomotion using PyTorch and Pymunk.
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch>=2.13.0
+Requires-Dist: pymunk>=7.3.0
+Requires-Dist: pygame>=2.6.1
+Requires-Dist: numpy>=2.5.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Dynamic: license-file
+
+# Evolution
+
+A project for me to explore how Artificial life work in a predefined system and also be able to check out what does evolution mean

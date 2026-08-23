@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class CreatureBrain(nn.Module):
     def __init__(self, input_size=13, output_size=4):
         super(CreatureBrain, self).__init__()
@@ -8,7 +9,7 @@ class CreatureBrain(nn.Module):
             nn.Linear(input_size, 16),
             nn.Tanh(),
             nn.Linear(16, output_size),
-            nn.Tanh() # Output actions between -1 and 1
+            nn.Tanh(),  # Output actions between -1 and 1
         )
         # Initialize weights with standard normal for GA mutation baseline
         for param in self.net.parameters():

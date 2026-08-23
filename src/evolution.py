@@ -1,7 +1,9 @@
 import copy
 import random
-import torch
+
 import numpy as np
+import torch
+
 
 class Population:
     def __init__(self, model_class, pop_size=50, mutation_rate=0.15, mutation_scale=0.35):
@@ -23,7 +25,9 @@ class Population:
     def crossover(self, parent1, parent2):
         child = copy.deepcopy(parent1)
         with torch.no_grad():
-            for p_child, p1, p2 in zip(child.parameters(), parent1.parameters(), parent2.parameters()):
+            for p_child, p1, p2 in zip(
+                child.parameters(), parent1.parameters(), parent2.parameters()
+            ):
                 # Uniform crossover
                 mask = (torch.rand_like(p1) < 0.5).float()
                 p_child.copy_(mask * p1 + (1 - mask) * p2)
@@ -32,10 +36,10 @@ class Population:
     def evolve(self):
         # Sort by fitness descending
         sorted_indices = np.argsort(self.fitnesses)[::-1]
-        elites = [self.models[i] for i in sorted_indices[:5]] # Keep top 5
+        elites = [self.models[i] for i in sorted_indices[:5]]  # Keep top 5
 
         new_models = elites[:]
-        
+
         # Fill the rest
         while len(new_models) < self.pop_size:
             if random.random() < 0.70:

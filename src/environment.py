@@ -1,5 +1,6 @@
-import pymunk
 import numpy as np
+import pymunk
+
 
 class CreatureEnv:
     def __init__(self, fitness_mode="baseline"):
@@ -23,7 +24,10 @@ class CreatureEnv:
         height = 20
         moment = pymunk.moment_for_box(mass, (width, height))
         self.torso = pymunk.Body(mass, moment)
-        self.torso.position = (400, 440)  # Spawn standing on the ground instead of dropping from the sky
+        self.torso.position = (
+            400,
+            440,
+        )  # Spawn standing on the ground instead of dropping from the sky
         shape = pymunk.Poly.create_box(self.torso, (width, height))
         shape.friction = 0.5
         shape.filter = pymunk.ShapeFilter(group=1)
@@ -40,27 +44,32 @@ class CreatureEnv:
 
         # Attach 4 legs: front-left, front-right, back-left, back-right
         anchors = [
-            (-width/2, -height/2), (width/2, -height/2),
-            (-width/2, height/2), (width/2, height/2) 
+            (-width / 2, -height / 2),
+            (width / 2, -height / 2),
+            (-width / 2, height / 2),
+            (width / 2, height / 2),
         ]
-        
+
         for anchor in anchors:
             leg = pymunk.Body(leg_mass, leg_moment)
-            leg.position = (self.torso.position.x + anchor[0], self.torso.position.y + anchor[1] - leg_length/2)
+            leg.position = (
+                self.torso.position.x + anchor[0],
+                self.torso.position.y + anchor[1] - leg_length / 2,
+            )
             leg_shape = pymunk.Poly.create_box(leg, (leg_width, leg_length))
             leg_shape.friction = 0.8
-            leg_shape.filter = pymunk.ShapeFilter(group=1) # Don't collide with torso or other legs
+            leg_shape.filter = pymunk.ShapeFilter(group=1)  # Don't collide with torso or other legs
             self.space.add(leg, leg_shape)
             self.legs.append(leg)
 
             # Pivot Joint
             pivot = pymunk.PivotJoint(self.torso, leg, self.torso.local_to_world(anchor))
             # Rotary Limit Joint (-60 to 60 degrees relative to torso to prevent full splits)
-            limit = pymunk.RotaryLimitJoint(self.torso, leg, -np.pi/3, np.pi/3)
+            limit = pymunk.RotaryLimitJoint(self.torso, leg, -np.pi / 3, np.pi / 3)
             # Motor to apply torque
             motor = pymunk.SimpleMotor(self.torso, leg, 0)
-            motor.max_force = 150000 # Lower max torque so it doesn't violently flip itself over
-            
+            motor.max_force = 150000  # Lower max torque so it doesn't violently flip itself over
+
             self.space.add(pivot, limit, motor)
             self.joints.append(pivot)
             self.motors.append(motor)
@@ -72,28 +81,28 @@ class CreatureEnv:
     def step(self, actions):
         # Actions are desired velocities for the motors
         for i, motor in enumerate(self.motors):
-            motor.rate = float(actions[i]) * 10.0 # Scale action to velocity
-        
+            motor.rate = float(actions[i]) * 10.0  # Scale action to velocity
+
         old_x = self.torso.position.x
-        self.space.step(1/60.0)
+        self.space.step(1 / 60.0)
         self.steps += 1
-        
+
         state = self.get_state()
-        
+
         # Base displacement
         reward = self.torso.position.x - old_x
-        
+
         if self.fitness_mode == "tilt_penalized" or self.fitness_mode == "all_penalties":
             reward -= 20 * abs(self.torso.angle) / 60.0
-            
+
         if self.fitness_mode == "energy_penalized" or self.fitness_mode == "all_penalties":
             energy_cost = sum(abs(float(a)) for a in actions)
             reward -= energy_cost * 0.05 / 60.0
-        
+
         # Fall condition
         fallen = abs(self.torso.angle) > 1.2 or self.torso.position.y > 520
         done = self.steps > 600 or fallen
-            
+
         return state, reward, done, fallen
 
     def get_state(self):
@@ -103,9 +112,9 @@ class CreatureEnv:
         state.append(self.torso.velocity.x)
         state.append(self.torso.velocity.y)
         state.append(self.torso.position.y)
-        
+
         for leg in self.legs:
             state.append(leg.angle - self.torso.angle)
             state.append(leg.angular_velocity)
-            
+
         return np.array(state, dtype=np.float32)

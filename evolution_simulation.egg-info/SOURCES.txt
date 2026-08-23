@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+evolution_simulation.egg-info/PKG-INFO
+evolution_simulation.egg-info/SOURCES.txt
+evolution_simulation.egg-info/dependency_links.txt
+evolution_simulation.egg-info/entry_points.txt
+evolution_simulation.egg-info/requires.txt
+evolution_simulation.egg-info/top_level.txt
+src/__init__.py
+src/environment.py
+src/evolution.py
+src/model.py
+tests/test_environment.py

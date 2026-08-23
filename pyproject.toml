@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evolution-simulation"
+version = "0.1.0"
+description = "A simulation for evolving creature locomotion using PyTorch and Pymunk."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.13.0",
+    "pymunk>=7.3.0",
+    "pygame>=2.6.1",
+    "numpy>=2.5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+]
+
+[project.scripts]
+evolution-train = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
