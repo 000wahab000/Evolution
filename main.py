@@ -10,8 +10,11 @@ import pymunk
 import pymunk.pygame_util
 import torch
 
+# pyrefly: ignore [missing-import]
 from src.environment import CreatureEnv
+# pyrefly: ignore [missing-import]
 from src.evolution import Population
+# pyrefly: ignore [missing-import]
 from src.model import CreatureBrain
 
 

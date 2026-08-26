@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Evolution - Creature Walker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 30px;
+            max-width: 900px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+        }
+        p {
+            color: #666;
+            margin: 0 0 20px 0;
+        }
+        video, img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦵 Evolution - Creature Walker</h1>
+        <p>Watch the evolved creature walk across the ground</p>
+        <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Creature simulation">
+    </div>
+</body>
+</html>

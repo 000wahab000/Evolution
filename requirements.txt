@@ -1,4 +1,7 @@
-torch==2.13.0
-pymunk==7.3.0
-pygame==2.6.1
-numpy==2.5.1
+torch>=2.0.0
+pymunk>=6.0.0
+pygame>=2.5.0
+numpy>=1.24.0
+flask>=3.0.0
+Pillow>=10.0.0
+

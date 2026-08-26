@@ -6,7 +6,6 @@ __pycache__/
 env/
 venv/
 .venv/
-*.pth
 *.log
 *.csv
 .DS_Store
