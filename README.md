@@ -15,4 +15,4 @@ python main.py --render
 it will run the best ones
 and yeah no AI slpp btw this si what the project is about am also adding a video or gif to show you
 
-![Evolution-1 walking demo](assets/walking-body.gif)
+![Evolution-1 walking demo](assets/walking%20body.gif)
