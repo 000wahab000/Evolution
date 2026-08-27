@@ -10,22 +10,22 @@ import pymunk
 import pymunk.pygame_util
 import torch
 
-# pyrefly: ignore [missing-import]
 from src.environment import CreatureEnv
-# pyrefly: ignore [missing-import]
 from src.evolution import Population
-# pyrefly: ignore [missing-import]
 from src.model import CreatureBrain
 
 
 def train(generations=100, pop_size=50, fitness_mode="baseline"):
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
     logging.info(
         f"Starting training for {generations} generations with population size {pop_size}..."
     )
     env = CreatureEnv(fitness_mode=fitness_mode)
     population = Population(CreatureBrain, pop_size=pop_size)
 
-    with open("history.csv", "w", newline="") as f:
+    history_path = os.path.join("logs", "history.csv")
+    with open(history_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             ["Generation", "Best_Fitness", "Average_Fitness", "Worst_Fitness", "Diversity_Score"]
@@ -56,13 +56,14 @@ def train(generations=100, pop_size=50, fitness_mode="baseline"):
         if gen_best_fitness > best_overall_fitness:
             best_overall_fitness = gen_best_fitness
             best_overall_model = population.models[gen_best_idx]
-            torch.save(best_overall_model.state_dict(), "best_model.pth")
+            torch.save(best_overall_model.state_dict(), os.path.join("models", "best_model.pth"))
 
         # Save top 5 of the current generation for rendering
         sorted_indices = np.argsort(population.fitnesses)[::-1]
         for idx_rank in range(min(5, len(population.models))):
             torch.save(
-                population.models[sorted_indices[idx_rank]].state_dict(), f"top_{idx_rank}.pth"
+                population.models[sorted_indices[idx_rank]].state_dict(),
+                os.path.join("models", f"top_{idx_rank}.pth"),
             )
 
         fitnesses = np.array(population.fitnesses)
@@ -81,19 +82,21 @@ def train(generations=100, pop_size=50, fitness_mode="baseline"):
             f"Gen {gen:3d} | Best: {best_fit:7.2f} | Avg: {avg_fit:7.2f} | Worst: {worst_fit:7.2f} | Div: {diversity:.4f}"
         )
 
-        with open("history.csv", "a", newline="") as f:
+        with open(history_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([gen, best_fit, avg_fit, worst_fit, diversity])
 
         population.evolve()
 
-    logging.info("Training complete. Best model saved to best_model.pth")
+    logging.info("Training complete. Best model saved to models/best_model.pth")
 
 
 def render():
     logging.info("Rendering top 5 models...")
-    if not os.path.exists("top_0.pth") and not os.path.exists("best_model.pth"):
-        logging.warning("No models found. Run --train first.")
+    top_0_path = os.path.join("models", "top_0.pth")
+    best_path = os.path.join("models", "best_model.pth")
+    if not os.path.exists(top_0_path) and not os.path.exists(best_path):
+        logging.warning("No models found in models/. Run --train first.")
         return
 
     pygame.init()
@@ -106,14 +109,12 @@ def render():
     envs = [CreatureEnv() for _ in range(5)]
     models = [CreatureBrain() for _ in range(5)]
     states = [env.reset() for env in envs]
-    total_rewards = [0] * 5
     dones = [False] * 5
 
     for i in range(5):
-        if os.path.exists(f"top_{i}.pth"):
-            models[i].load_state_dict(torch.load(f"top_{i}.pth"))
-        elif os.path.exists("best_model.pth"):
-            models[i].load_state_dict(torch.load("best_model.pth"))
+        m_top = os.path.join("models", f"top_{i}.pth")
+        path = m_top if os.path.exists(m_top) else best_path
+        models[i].load_state_dict(torch.load(path, weights_only=True))
         models[i].eval()
 
     running = True
@@ -126,8 +127,7 @@ def render():
         for i in range(5):
             if not dones[i]:
                 action = models[i].get_action(states[i])
-                states[i], reward, dones[i], fallen = envs[i].step(action)
-                total_rewards[i] += reward
+                states[i], _, dones[i], _ = envs[i].step(action)
 
         # Camera follows the leader (max x position)
         best_x = max([env.torso.position.x for env in envs])
@@ -182,17 +182,17 @@ def render():
 
         if all(dones):
             states = [env.reset() for env in envs]
-            total_rewards = [0] * 5
             dones = [False] * 5
 
     pygame.quit()
 
 
 def main():
+    os.makedirs("logs", exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler("evolution.log"), logging.StreamHandler()],
+        handlers=[logging.FileHandler(os.path.join("logs", "evolution.log")), logging.StreamHandler()],
     )
 
     parser = argparse.ArgumentParser(description="Evolved Locomotion in Python")

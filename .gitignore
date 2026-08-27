@@ -1,4 +1,21 @@
-node_modules
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+.venv/
+env/
+.env
+
+# Caches & IDE
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.vscode/
+.idea/
+
+# Node
+node_modules/
 package-lock.json
 package.json
-__pycache__

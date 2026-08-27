@@ -12,9 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt --extra-index-url https://dow
 
 COPY . /app/
 
-# Copy the best model into the image so it's ready to use
-COPY best_model.pth /app/best_model.pth
-
 EXPOSE 5000
 
 CMD ["python", "app.py"]
+
