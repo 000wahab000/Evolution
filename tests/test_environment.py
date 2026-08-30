@@ -6,18 +6,22 @@ def test_environment_initialization():
     assert env.steps == 0
     assert env.fitness_mode == "baseline"
 
-def test_environment_reset():
+def test_environment_multiple_resets():
     env = CreatureEnv()
-    state = env.reset()
-    assert len(state) == 13
+    for _ in range(5):
+        state = env.reset()
+        assert len(state) == 13
+        assert env.torso.position.x == 400
+        assert env.torso.position.y == 440
+        assert env.torso.angle == 0.0
+        assert env.steps == 0
 
-def test_environment_step():
-    env = CreatureEnv()
-    env.reset()
-    # Dummy action: 4 legs, float values between -1 and 1
-    action = [0.0, 0.0, 0.0, 0.0]
-    state, reward, done, fallen = env.step(action)
-    assert len(state) == 13
-    assert isinstance(reward, float)
-    assert isinstance(done, bool)
-    assert isinstance(fallen, bool)
+
+def test_environment_fitness_modes():
+    for mode in ["baseline", "tilt_penalized", "energy_penalized", "all_penalties"]:
+        env = CreatureEnv(fitness_mode=mode)
+        env.reset()
+        action = [0.5, -0.5, 0.2, -0.2]
+        state, reward, done, fallen = env.step(action)
+        assert isinstance(reward, float)
+

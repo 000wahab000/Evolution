@@ -43,14 +43,15 @@ class CreatureEnv:
         leg_moment = pymunk.moment_for_box(leg_mass, (leg_width, leg_length))
 
         # Attach 4 legs: front-left, front-right, back-left, back-right
-        anchors = [
+        self.anchors = [
             (-width / 2, -height / 2),
             (width / 2, -height / 2),
             (-width / 2, height / 2),
             (width / 2, height / 2),
         ]
+        self.leg_length = leg_length
 
-        for anchor in anchors:
+        for anchor in self.anchors:
             leg = pymunk.Body(leg_mass, leg_moment)
             leg.position = (
                 self.torso.position.x + anchor[0],
@@ -75,7 +76,24 @@ class CreatureEnv:
             self.motors.append(motor)
 
     def reset(self):
-        self.__init__(fitness_mode=self.fitness_mode)
+        self.torso.position = (400, 440)
+        self.torso.angle = 0.0
+        self.torso.velocity = (0.0, 0.0)
+        self.torso.angular_velocity = 0.0
+
+        for leg, anchor in zip(self.legs, self.anchors):
+            leg.position = (
+                400 + anchor[0],
+                440 + anchor[1] - self.leg_length / 2,
+            )
+            leg.angle = 0.0
+            leg.velocity = (0.0, 0.0)
+            leg.angular_velocity = 0.0
+
+        for motor in self.motors:
+            motor.rate = 0.0
+
+        self.steps = 0
         return self.get_state()
 
     def step(self, actions):

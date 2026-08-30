@@ -13,8 +13,8 @@ class Population:
         self.models = [model_class() for _ in range(pop_size)]
         self.fitnesses = [0.0] * pop_size
 
-    def mutate(self, model):
-        child = copy.deepcopy(model)
+    def mutate(self, model, in_place=False):
+        child = model if in_place else copy.deepcopy(model)
         with torch.no_grad():
             for param in child.parameters():
                 mutation_mask = (torch.rand_like(param) < self.mutation_rate).float()
@@ -38,7 +38,7 @@ class Population:
         sorted_indices = np.argsort(self.fitnesses)[::-1]
         elites = [self.models[i] for i in sorted_indices[:5]]  # Keep top 5
 
-        new_models = elites[:]
+        new_models = [copy.deepcopy(m) for m in elites]
 
         # Fill the rest
         while len(new_models) < self.pop_size:
@@ -47,10 +47,10 @@ class Population:
                 parent = random.choice(elites)
                 new_models.append(self.mutate(parent))
             else:
-                # 30% crossover then mutate
+                # 30% crossover then mutate in-place on the fresh child
                 parent1, parent2 = random.choices(elites, k=2)
                 child = self.crossover(parent1, parent2)
-                child = self.mutate(child)
+                child = self.mutate(child, in_place=True)
                 new_models.append(child)
 
         self.models = new_models
