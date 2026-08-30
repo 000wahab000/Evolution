@@ -15,14 +15,14 @@ from src.evolution import Population
 from src.model import CreatureBrain
 
 
-def train(generations=100, pop_size=50, fitness_mode="baseline"):
+def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15):
     os.makedirs("models", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
     logging.info(
-        f"Starting training for {generations} generations with population size {pop_size}..."
+        f"Starting training for {generations} generations with population size {pop_size}, mutation_rate {mutation_rate}..."
     )
     env = CreatureEnv(fitness_mode=fitness_mode)
-    population = Population(CreatureBrain, pop_size=pop_size)
+    population = Population(CreatureBrain, pop_size=pop_size, mutation_rate=mutation_rate)
 
     history_path = os.path.join("logs", "history.csv")
     with open(history_path, "w", newline="") as f:
@@ -200,6 +200,7 @@ def main():
     parser.add_argument("--render", action="store_true", help="Render the best genome")
     parser.add_argument("--gens", type=int, default=100, help="Number of generations to train")
     parser.add_argument("--pop", type=int, default=50, help="Population size")
+    parser.add_argument("--mutation-rate", type=float, default=0.15, help="Mutation rate for GA weights")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
     parser.add_argument(
         "--fitness-mode",
@@ -216,7 +217,7 @@ def main():
         random.seed(args.seed)
 
     if args.train:
-        train(args.gens, args.pop, args.fitness_mode)
+        train(args.gens, args.pop, args.fitness_mode, args.mutation_rate)
     elif args.render:
         render()
     else:

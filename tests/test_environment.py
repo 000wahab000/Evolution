@@ -10,9 +10,9 @@ def test_environment_multiple_resets():
     env = CreatureEnv()
     for _ in range(5):
         state = env.reset()
-        assert len(state) == 13
+        assert len(state) == 15
         assert env.torso.position.x == 400
-        assert env.torso.position.y == 440
+        assert env.torso.position.y == 450
         assert env.torso.angle == 0.0
         assert env.steps == 0
 

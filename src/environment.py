@@ -26,8 +26,8 @@ class CreatureEnv:
         self.torso = pymunk.Body(mass, moment)
         self.torso.position = (
             400,
-            440,
-        )  # Spawn standing on the ground instead of dropping from the sky
+            450,
+        )  # Torso center at Y=450; with 40px legs, feet touch ground at Y=500
         shape = pymunk.Poly.create_box(self.torso, (width, height))
         shape.friction = 0.5
         shape.filter = pymunk.ShapeFilter(group=1)
@@ -42,41 +42,42 @@ class CreatureEnv:
         leg_length = 40
         leg_moment = pymunk.moment_for_box(leg_mass, (leg_width, leg_length))
 
-        # Attach 4 legs: front-left, front-right, back-left, back-right
+        # Attach 4 legs (2 rear legs, 2 front legs) to bottom of torso
         self.anchors = [
-            (-width / 2, -height / 2),
-            (width / 2, -height / 2),
-            (-width / 2, height / 2),
-            (width / 2, height / 2),
+            (-22, height / 2),  # Rear-outer
+            (-18, height / 2),  # Rear-inner
+            (18, height / 2),   # Front-inner
+            (22, height / 2),   # Front-outer
         ]
         self.leg_length = leg_length
 
         for anchor in self.anchors:
             leg = pymunk.Body(leg_mass, leg_moment)
+            # Center of leg is 20px below anchor, so foot rests at Y=500
             leg.position = (
                 self.torso.position.x + anchor[0],
-                self.torso.position.y + anchor[1] - leg_length / 2,
+                self.torso.position.y + anchor[1] + leg_length / 2,
             )
             leg_shape = pymunk.Poly.create_box(leg, (leg_width, leg_length))
-            leg_shape.friction = 0.8
-            leg_shape.filter = pymunk.ShapeFilter(group=1)  # Don't collide with torso or other legs
+            leg_shape.friction = 1.2  # High ground traction
+            leg_shape.filter = pymunk.ShapeFilter(group=1)  # Don't self-collide
             self.space.add(leg, leg_shape)
             self.legs.append(leg)
 
-            # Pivot Joint
-            pivot = pymunk.PivotJoint(self.torso, leg, self.torso.local_to_world(anchor))
-            # Rotary Limit Joint (-60 to 60 degrees relative to torso to prevent full splits)
+            # Pivot Joint at top of leg (0, -leg_length / 2)
+            pivot = pymunk.PivotJoint(self.torso, leg, anchor, (0, -leg_length / 2))
+            # Rotary Limit Joint (-60 to 60 degrees relative to torso)
             limit = pymunk.RotaryLimitJoint(self.torso, leg, -np.pi / 3, np.pi / 3)
             # Motor to apply torque
             motor = pymunk.SimpleMotor(self.torso, leg, 0)
-            motor.max_force = 150000  # Lower max torque so it doesn't violently flip itself over
+            motor.max_force = 150000
 
             self.space.add(pivot, limit, motor)
             self.joints.append(pivot)
             self.motors.append(motor)
 
     def reset(self):
-        self.torso.position = (400, 440)
+        self.torso.position = (400, 450)
         self.torso.angle = 0.0
         self.torso.velocity = (0.0, 0.0)
         self.torso.angular_velocity = 0.0
@@ -84,7 +85,7 @@ class CreatureEnv:
         for leg, anchor in zip(self.legs, self.anchors):
             leg.position = (
                 400 + anchor[0],
-                440 + anchor[1] - self.leg_length / 2,
+                450 + anchor[1] + self.leg_length / 2,
             )
             leg.angle = 0.0
             leg.velocity = (0.0, 0.0)
@@ -94,6 +95,7 @@ class CreatureEnv:
             motor.rate = 0.0
 
         self.steps = 0
+        self.still_steps = 0
         return self.get_state()
 
     def step(self, actions):
@@ -107,8 +109,13 @@ class CreatureEnv:
 
         state = self.get_state()
 
-        # Base displacement
-        reward = self.torso.position.x - old_x
+        # Base displacement reward
+        displacement = self.torso.position.x - old_x
+        reward = displacement
+
+        # Continuous leg activity bonus (encourages active cycling over freezing)
+        leg_motion = sum(abs(float(leg.angular_velocity)) for leg in self.legs)
+        reward += leg_motion * 0.005
 
         if self.fitness_mode == "tilt_penalized" or self.fitness_mode == "all_penalties":
             reward -= 20 * abs(self.torso.angle) / 60.0
@@ -117,22 +124,35 @@ class CreatureEnv:
             energy_cost = sum(abs(float(a)) for a in actions)
             reward -= energy_cost * 0.05 / 60.0
 
-        # Fall condition
+        # Standstill / stagnation tracking (terminate if freezing in place)
+        if abs(self.torso.velocity.x) < 2.0 and self.steps > 45:
+            self.still_steps += 1
+            reward -= 0.1
+        else:
+            self.still_steps = 0
+
+        # Fall condition or freezing dead in tracks
         fallen = abs(self.torso.angle) > 1.2 or self.torso.position.y > 520
-        done = self.steps > 600 or fallen
+        stuck = self.still_steps > 60
+        done = self.steps > 600 or fallen or stuck
 
         return state, reward, done, fallen
 
     def get_state(self):
         state = []
-        state.append(self.torso.angle)
-        state.append(self.torso.angular_velocity)
-        state.append(self.torso.velocity.x)
-        state.append(self.torso.velocity.y)
-        state.append(self.torso.position.y)
+        state.append(float(self.torso.angle))
+        state.append(float(self.torso.angular_velocity) / 10.0)
+        state.append(float(self.torso.velocity.x) / 100.0)
+        state.append(float(self.torso.velocity.y) / 100.0)
+        state.append((float(self.torso.position.y) - 450.0) / 50.0)
 
         for leg in self.legs:
-            state.append(leg.angle - self.torso.angle)
-            state.append(leg.angular_velocity)
+            state.append(float(leg.angle - self.torso.angle))
+            state.append(float(leg.angular_velocity) / 10.0)
+
+        # Central Pattern Generator (CPG) internal rhythm: sin/cos phase clock (stride cycle ~0.5s)
+        phase = 2.0 * np.pi * (self.steps % 30) / 30.0
+        state.append(float(np.sin(phase)))
+        state.append(float(np.cos(phase)))
 
         return np.array(state, dtype=np.float32)
