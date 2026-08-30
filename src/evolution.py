@@ -36,7 +36,8 @@ class Population:
     def evolve(self):
         # Sort by fitness descending
         sorted_indices = np.argsort(self.fitnesses)[::-1]
-        elites = [self.models[i] for i in sorted_indices[:5]]  # Keep top 5
+        elite_count = min(5, self.pop_size)
+        elites = [self.models[i] for i in sorted_indices[:elite_count]]  # Keep top-N elites
 
         new_models = [copy.deepcopy(m) for m in elites]
 
@@ -48,7 +49,10 @@ class Population:
                 new_models.append(self.mutate(parent))
             else:
                 # 85% crossover then mutate in-place on the fresh child
-                parent1, parent2 = random.choices(elites, k=2)
+                if len(elites) >= 2:
+                    parent1, parent2 = random.sample(elites, 2)  # No replacement — always distinct
+                else:
+                    parent1 = parent2 = elites[0]
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child, in_place=True)
                 new_models.append(child)

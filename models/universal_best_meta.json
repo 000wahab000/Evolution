@@ -1,0 +1,8 @@
+{
+  "best_fitness": 1155.3031186446349,
+  "generation": 132,
+  "fitness_mode": "ground_termination",
+  "pop_size": 50,
+  "mutation_rate": 0.15,
+  "saved_at": "2026-08-31 02:57:56"
+}

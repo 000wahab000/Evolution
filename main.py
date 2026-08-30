@@ -107,7 +107,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
                 mutation_rate,
             )
             logging.info(
-                f"🏆 NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.pth)"
+                f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.pth)"
             )
 
         # Save top 5 of the current generation for rendering
@@ -266,7 +266,7 @@ def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler(os.path.join("logs", "evolution.log")), logging.StreamHandler()],
+        handlers=[logging.FileHandler(os.path.join("logs", "evolution.log"), encoding="utf-8"), logging.StreamHandler()],
     )
 
     parser = argparse.ArgumentParser(description="Evolved Locomotion in Python")

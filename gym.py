@@ -20,7 +20,7 @@ while not episode_over:
     # Choose an action: 0 = push cart left, 1 = push cart right
     #action = env.action_space.sample()  # Random action for now - real agents will be smarter!
     pole_angle = observation[2]
-    action = 1 if pole_angle > 100 else 0
+    action = 1 if pole_angle > 0 else 0  # pole_angle is in radians; 0 = balanced midpoint
 
     # Take the action and see what happens
     observation, reward, terminated, truncated, info = env.step(action)
