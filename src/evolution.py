@@ -42,12 +42,12 @@ class Population:
 
         # Fill the rest
         while len(new_models) < self.pop_size:
-            if random.random() < 0.70:
-                # 70% purely mutate elites
+            if random.random() < 0.15:
+                # 15% purely mutate elites
                 parent = random.choice(elites)
                 new_models.append(self.mutate(parent))
             else:
-                # 30% crossover then mutate in-place on the fresh child
+                # 85% crossover then mutate in-place on the fresh child
                 parent1, parent2 = random.choices(elites, k=2)
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child, in_place=True)

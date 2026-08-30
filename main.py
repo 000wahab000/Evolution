@@ -1,8 +1,10 @@
 import argparse
 import csv
+import json
 import logging
 import os
 import random
+import time
 
 import numpy as np
 import pygame
@@ -14,12 +16,46 @@ from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
 
+UNIVERSAL_BEST_PATH = os.path.join("models", "universal_best.pth")
+UNIVERSAL_META_PATH = os.path.join("models", "universal_best_meta.json")
+
+
+def load_universal_best_meta():
+    if os.path.exists(UNIVERSAL_META_PATH):
+        try:
+            with open(UNIVERSAL_META_PATH, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_universal_best(model, fitness, generation, fitness_mode, pop_size, mutation_rate):
+    os.makedirs("models", exist_ok=True)
+    torch.save(model.state_dict(), UNIVERSAL_BEST_PATH)
+    meta = {
+        "best_fitness": float(fitness),
+        "generation": int(generation),
+        "fitness_mode": str(fitness_mode),
+        "pop_size": int(pop_size),
+        "mutation_rate": float(mutation_rate),
+        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    with open(UNIVERSAL_META_PATH, "w") as f:
+        json.dump(meta, f, indent=2)
+
 
 def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15):
     os.makedirs("models", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
+
+    meta = load_universal_best_meta()
+    universal_best_fitness = float(meta.get("best_fitness", -float("inf")))
+    univ_info = f"{universal_best_fitness:.2f}" if universal_best_fitness != -float("inf") else "None"
+
     logging.info(
-        f"Starting training for {generations} generations with population size {pop_size}, mutation_rate {mutation_rate}..."
+        f"Starting training for {generations} generations with population size {pop_size}, mutation_rate {mutation_rate}... "
+        f"(Universal All-Time Record: {univ_info})"
     )
     env = CreatureEnv(fitness_mode=fitness_mode)
     population = Population(CreatureBrain, pop_size=pop_size, mutation_rate=mutation_rate)
@@ -53,10 +89,26 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
         gen_best_fitness = max(population.fitnesses)
         gen_best_idx = population.fitnesses.index(gen_best_fitness)
 
+        # Save session best
         if gen_best_fitness > best_overall_fitness:
             best_overall_fitness = gen_best_fitness
             best_overall_model = population.models[gen_best_idx]
             torch.save(best_overall_model.state_dict(), os.path.join("models", "best_model.pth"))
+
+        # Save universal all-time best
+        if gen_best_fitness > universal_best_fitness:
+            universal_best_fitness = gen_best_fitness
+            save_universal_best(
+                population.models[gen_best_idx],
+                gen_best_fitness,
+                gen,
+                fitness_mode,
+                pop_size,
+                mutation_rate,
+            )
+            logging.info(
+                f"🏆 NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.pth)"
+            )
 
         # Save top 5 of the current generation for rendering
         sorted_indices = np.argsort(population.fitnesses)[::-1]
@@ -88,16 +140,26 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
 
         population.evolve()
 
-    logging.info("Training complete. Best model saved to models/best_model.pth")
+    logging.info(
+        f"Training complete. Session best: models/best_model.pth | Universal best: models/universal_best.pth ({universal_best_fitness:.2f})"
+    )
 
 
-def render():
-    logging.info("Rendering top 5 models...")
+def render(render_universal=False):
+    universal_path = UNIVERSAL_BEST_PATH
     top_0_path = os.path.join("models", "top_0.pth")
     best_path = os.path.join("models", "best_model.pth")
-    if not os.path.exists(top_0_path) and not os.path.exists(best_path):
+
+    if render_universal and os.path.exists(universal_path):
+        logging.info("Rendering UNIVERSAL ALL-TIME BEST model...")
+    elif not os.path.exists(top_0_path) and not os.path.exists(best_path) and not os.path.exists(universal_path):
         logging.warning("No models found in models/. Run --train first.")
         return
+    else:
+        logging.info("Rendering top 5 models...")
+
+    meta = load_universal_best_meta()
+    univ_score = f"{meta.get('best_fitness', 0.0):.1f}" if meta else "N/A"
 
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
@@ -112,10 +174,22 @@ def render():
     dones = [False] * 5
 
     for i in range(5):
-        m_top = os.path.join("models", f"top_{i}.pth")
-        path = m_top if os.path.exists(m_top) else best_path
-        models[i].load_state_dict(torch.load(path, weights_only=True))
-        models[i].eval()
+        if render_universal and os.path.exists(universal_path):
+            path = universal_path
+        else:
+            m_top = os.path.join("models", f"top_{i}.pth")
+            if os.path.exists(m_top):
+                path = m_top
+            elif os.path.exists(best_path):
+                path = best_path
+            elif os.path.exists(universal_path):
+                path = universal_path
+            else:
+                path = None
+
+        if path and os.path.exists(path):
+            models[i].load_state_dict(torch.load(path, weights_only=True))
+            models[i].eval()
 
     running = True
 
@@ -156,6 +230,7 @@ def render():
 
         stats = [
             f"--- LEADER STATS (Creature {leader_idx + 1}) ---",
+            f"Universal Record: {univ_score} pts",
             f"Speed: {leader_env.torso.velocity.x:.1f} px/s",
             f"Torso Angle: {leader_env.torso.angle:.2f} rad",
             "Motor Actions:",
@@ -173,7 +248,6 @@ def render():
         stats.append(f"Steps: {max(env.steps for env in envs)} / 600")
 
         for i, text in enumerate(stats):
-            # Change color slightly for each creature text to differentiate, or just use black
             img = font.render(text, True, (0, 0, 0))
             screen.blit(img, (20, 20 + i * 25))
 
@@ -198,6 +272,7 @@ def main():
     parser = argparse.ArgumentParser(description="Evolved Locomotion in Python")
     parser.add_argument("--train", action="store_true", help="Run the evolutionary training loop")
     parser.add_argument("--render", action="store_true", help="Render the best genome")
+    parser.add_argument("--universal", action="store_true", help="Render the universal all-time best model")
     parser.add_argument("--gens", type=int, default=100, help="Number of generations to train")
     parser.add_argument("--pop", type=int, default=50, help="Population size")
     parser.add_argument("--mutation-rate", type=float, default=0.15, help="Mutation rate for GA weights")
@@ -206,7 +281,7 @@ def main():
         "--fitness-mode",
         type=str,
         default="baseline",
-        choices=["baseline", "tilt_penalized", "energy_penalized", "all_penalties"],
+        choices=["baseline", "tilt_penalized", "energy_penalized", "all_penalties", "ground_termination"],
         help="Fitness function mode",
     )
     args = parser.parse_args()
@@ -218,8 +293,8 @@ def main():
 
     if args.train:
         train(args.gens, args.pop, args.fitness_mode, args.mutation_rate)
-    elif args.render:
-        render()
+    elif args.render or args.universal:
+        render(render_universal=args.universal)
     else:
         parser.print_help()
 

@@ -7,4 +7,6 @@ def test_train_integration(tmp_path, monkeypatch):
     train(generations=1, pop_size=2, fitness_mode="baseline")
 
     assert os.path.exists(os.path.join("models", "best_model.pth"))
+    assert os.path.exists(os.path.join("models", "universal_best.pth"))
+    assert os.path.exists(os.path.join("models", "universal_best_meta.json"))
     assert os.path.exists(os.path.join("logs", "history.csv"))

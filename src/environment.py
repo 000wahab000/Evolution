@@ -13,9 +13,9 @@ class CreatureEnv:
 
     def create_ground(self):
         body = self.space.static_body
-        shape = pymunk.Segment(body, (-10000, 500), (10000, 500), 5.0)  # Ground at Y=500
-        shape.friction = 1.0
-        self.space.add(shape)
+        self.ground_shape = pymunk.Segment(body, (-10000, 500), (10000, 500), 5.0)  # Ground at Y=500
+        self.ground_shape.friction = 1.0
+        self.space.add(self.ground_shape)
 
     def create_creature(self):
         # Torso
@@ -28,12 +28,13 @@ class CreatureEnv:
             400,
             450,
         )  # Torso center at Y=450; with 40px legs, feet touch ground at Y=500
-        shape = pymunk.Poly.create_box(self.torso, (width, height))
-        shape.friction = 0.5
-        shape.filter = pymunk.ShapeFilter(group=1)
-        self.space.add(self.torso, shape)
+        self.torso_shape = pymunk.Poly.create_box(self.torso, (width, height))
+        self.torso_shape.friction = 0.5
+        self.torso_shape.filter = pymunk.ShapeFilter(group=1)
+        self.space.add(self.torso, self.torso_shape)
 
         self.legs = []
+        self.leg_shapes = []
         self.joints = []
         self.motors = []
 
@@ -63,6 +64,7 @@ class CreatureEnv:
             leg_shape.filter = pymunk.ShapeFilter(group=1)  # Don't self-collide
             self.space.add(leg, leg_shape)
             self.legs.append(leg)
+            self.leg_shapes.append(leg_shape)
 
             # Pivot Joint at top of leg (0, -leg_length / 2)
             pivot = pymunk.PivotJoint(self.torso, leg, anchor, (0, -leg_length / 2))
@@ -117,12 +119,24 @@ class CreatureEnv:
         leg_motion = sum(abs(float(leg.angular_velocity)) for leg in self.legs)
         reward += leg_motion * 0.005
 
-        if self.fitness_mode == "tilt_penalized" or self.fitness_mode == "all_penalties":
+        # Check if torso / body touches the ground (ground surface is at ~495-500)
+        torso_bottom = max(
+            self.torso.position.y + lx * np.sin(self.torso.angle) + ly * np.cos(self.torso.angle)
+            for lx, ly in [(-30, -10), (-30, 10), (30, -10), (30, 10)]
+        )
+        body_touched_ground = bool(torso_bottom >= 495.0)
+
+        # Tilt penalty only in tilt-penalized modes (not in baseline or ground_termination)
+        if self.fitness_mode in ["tilt_penalized", "all_penalties"]:
             reward -= 20 * abs(self.torso.angle) / 60.0
 
-        if self.fitness_mode == "energy_penalized" or self.fitness_mode == "all_penalties":
+        if self.fitness_mode in ["energy_penalized", "all_penalties"]:
             energy_cost = sum(abs(float(a)) for a in actions)
             reward -= energy_cost * 0.05 / 60.0
+
+        # Ground termination penalty when body touches the ground
+        if self.fitness_mode in ["ground_termination", "touch_ground"] and body_touched_ground:
+            reward -= 100.0
 
         # Standstill / stagnation tracking (terminate if freezing in place)
         if abs(self.torso.velocity.x) < 2.0 and self.steps > 45:
@@ -131,8 +145,12 @@ class CreatureEnv:
         else:
             self.still_steps = 0
 
-        # Fall condition or freezing dead in tracks
-        fallen = abs(self.torso.angle) > 1.2 or self.torso.position.y > 520
+        # Fall / termination condition: touching the ground terminates the episode
+        if self.fitness_mode in ["ground_termination", "touch_ground"]:
+            fallen = body_touched_ground or abs(self.torso.angle) > 1.2 or self.torso.position.y > 520
+        else:
+            fallen = abs(self.torso.angle) > 1.2 or self.torso.position.y > 520 or body_touched_ground
+
         stuck = self.still_steps > 60
         done = self.steps > 600 or fallen or stuck
 
