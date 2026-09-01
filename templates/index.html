@@ -1,46 +1,410 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Evolution - Creature Walker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            padding: 30px;
-            max-width: 900px;
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-            margin: 0 0 10px 0;
-        }
-        p {
-            color: #666;
-            margin: 0 0 20px 0;
-        }
-        video, img {
-            max-width: 100%;
-            border-radius: 8px;
-            border: 2px solid #667eea;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evolution-1 — Creature Walker Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0b0d14;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: #64748b;
+      margin-top: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+    }
+
+    .card {
+      background: #131722;
+      border: 1px solid #1e2535;
+      border-radius: 16px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card:hover { transform: translateY(-2px); border-color: #2d3a52; }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .card.evolved::before  { background: linear-gradient(90deg, #818cf8, #6366f1); }
+    .card.random::before   { background: linear-gradient(90deg, #34d399, #059669); }
+
+    .card-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .card.evolved .card-label { color: #818cf8; }
+    .card.random  .card-label { color: #34d399; }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 1.25rem;
+    }
+
+    .fitness-score {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .card.evolved .fitness-score { color: #818cf8; }
+    .card.random  .fitness-score { color: #34d399; }
+
+    .fitness-unit {
+      font-size: 0.8rem;
+      color: #475569;
+      margin-top: 0.25rem;
+    }
+
+    .meta-list {
+      margin-top: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+
+    .meta-key { color: #475569; }
+    .meta-val { color: #94a3b8; font-weight: 600; }
+
+    /* Improvement badge */
+    .badge {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge.positive { background: #0f2a1e; color: #34d399; border: 1px solid #065f46; }
+    .badge.negative { background: #1f1014; color: #f87171; border: 1px solid #7f1d1d; }
+
+    /* Bar comparison */
+    .compare-card {
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+    }
+
+    .compare-card .card-title {
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .bar-row {
+      margin-bottom: 1.1rem;
+    }
+
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+      color: #94a3b8;
+    }
+
+    .bar-track {
+      background: #1e2535;
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+    }
+
+    .bar-fill.evolved { background: linear-gradient(90deg, #818cf8, #6366f1); }
+    .bar-fill.random  { background: linear-gradient(90deg, #34d399, #059669); }
+
+    /* Chart */
+    .chart-card {
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+    }
+
+    .chart-wrapper { position: relative; height: 280px; }
+
+    .loading {
+      color: #475569;
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🦵 Evolution - Creature Walker</h1>
-        <p>Watch the evolved creature walk across the ground</p>
-        <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Creature simulation">
+  <header>
+    <h1>🦵 Evolution-1 Dashboard</h1>
+    <p>Genetic algorithm creature walker — fitness comparison</p>
+  </header>
+
+  <!-- Stat Cards -->
+  <div class="grid">
+    <!-- Best evolved model -->
+    <div class="card evolved" id="best-card">
+      <div class="card-label">Best Evolved</div>
+      <div class="card-title">All-Time Champion</div>
+      <div class="fitness-score" id="best-fitness"><span class="loading">—</span></div>
+      <div class="fitness-unit">fitness score</div>
+      <div class="meta-list" id="best-meta"></div>
     </div>
+
+    <!-- Random untrained model -->
+    <div class="card random" id="random-card">
+      <div class="card-label">Random (Untrained)</div>
+      <div class="card-title">Fresh Random Weights</div>
+      <div class="fitness-score" id="random-fitness">
+        <span class="loading"><span class="status-dot" style="background:#34d399"></span>Running…</span>
+      </div>
+      <div class="fitness-unit">fitness score</div>
+      <div id="random-badge" style="margin-top:1rem"></div>
+    </div>
+  </div>
+
+  <!-- Bar comparison -->
+  <div class="compare-card">
+    <div class="card">
+      <div class="card-title">Fitness Comparison</div>
+      <div id="bars">
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>🏆 Best Evolved</span>
+            <span id="bar-label-evolved">—</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill evolved" id="bar-evolved" style="width:0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>🎲 Random</span>
+            <span id="bar-label-random">—</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill random" id="bar-random" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History chart -->
+  <div class="chart-card">
+    <div class="card">
+      <div class="card-title">Fitness Over Generations</div>
+      <div class="chart-wrapper">
+        <canvas id="historyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── helpers ──────────────────────────────────────────────────────────────
+    const fmt = v => (v == null ? '—' : Number(v).toFixed(1));
+
+    function drawBars(evolved, random) {
+      const max = Math.max(Math.abs(evolved ?? 0), Math.abs(random ?? 0), 1);
+      const pct = v => Math.max(0, Math.min(100, (v / max) * 100)).toFixed(1) + '%';
+      document.getElementById('bar-evolved').style.width = pct(evolved ?? 0);
+      document.getElementById('bar-random').style.width  = pct(random  ?? 0);
+      document.getElementById('bar-label-evolved').textContent = fmt(evolved);
+      document.getElementById('bar-label-random').textContent  = fmt(random);
+    }
+
+    // ── /api/best ─────────────────────────────────────────────────────────────
+    let evolvedFitness = null;
+
+    fetch('/api/best')
+      .then(r => r.json())
+      .then(data => {
+        if (!data || Object.keys(data).length === 0) {
+          document.getElementById('best-fitness').textContent = 'No data';
+          return;
+        }
+        evolvedFitness = data.best_fitness ?? null;
+        document.getElementById('best-fitness').textContent = fmt(evolvedFitness);
+
+        const meta = document.getElementById('best-meta');
+        const rows = [
+          ['Generation',   data.generation ?? '—'],
+          ['Fitness Mode', data.fitness_mode ?? '—'],
+          ['Saved At',     data.saved_at ?? '—'],
+          ['Pop Size',     data.pop_size ?? '—'],
+          ['Mutation Rate',data.mutation_rate != null ? data.mutation_rate.toFixed(3) : '—'],
+        ];
+        meta.innerHTML = rows.map(([k, v]) =>
+          `<div class="meta-row"><span class="meta-key">${k}</span><span class="meta-val">${v}</span></div>`
+        ).join('');
+
+        drawBars(evolvedFitness, null);
+      })
+      .catch(() => { document.getElementById('best-fitness').textContent = 'Error'; });
+
+    // ── /api/random ───────────────────────────────────────────────────────────
+    fetch('/api/random')
+      .then(r => r.json())
+      .then(data => {
+        const rf = data.fitness ?? null;
+        document.getElementById('random-fitness').textContent = fmt(rf);
+
+        // Improvement badge
+        const badge = document.getElementById('random-badge');
+        if (evolvedFitness != null && rf != null) {
+          const diff = evolvedFitness - rf;
+          const sign = diff >= 0 ? '+' : '';
+          badge.innerHTML = `<span class="badge ${diff >= 0 ? 'positive' : 'negative'}">
+            Evolution improved fitness by ${sign}${fmt(diff)}
+          </span>`;
+        }
+
+        drawBars(evolvedFitness, rf);
+      })
+      .catch(() => { document.getElementById('random-fitness').textContent = 'Error'; });
+
+    // ── /api/history chart ────────────────────────────────────────────────────
+    fetch('/api/history')
+      .then(r => r.json())
+      .then(rows => {
+        if (!Array.isArray(rows) || rows.length === 0) {
+          document.querySelector('.chart-wrapper').innerHTML =
+            '<p style="color:#475569;font-size:.85rem;padding:2rem 0">No training history yet. Run main.py to start training.</p>';
+          return;
+        }
+
+        const labels = rows.map(r => `Gen ${r.Generation}`);
+        const ctx = document.getElementById('historyChart').getContext('2d');
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Best',
+                data: rows.map(r => r.Best_Fitness),
+                borderColor: '#818cf8',
+                backgroundColor: 'rgba(129,140,248,0.08)',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.4,
+              },
+              {
+                label: 'Average',
+                data: rows.map(r => r.Average_Fitness),
+                borderColor: '#34d399',
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                borderDash: [4, 3],
+                tension: 0.4,
+              },
+              {
+                label: 'Worst',
+                data: rows.map(r => r.Worst_Fitness),
+                borderColor: '#f87171',
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                pointRadius: 0,
+                borderDash: [2, 4],
+                tension: 0.4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 600 },
+            plugins: {
+              legend: {
+                labels: { color: '#64748b', font: { size: 11 }, boxWidth: 14 },
+              },
+              tooltip: {
+                backgroundColor: '#131722',
+                borderColor: '#1e2535',
+                borderWidth: 1,
+                titleColor: '#e2e8f0',
+                bodyColor: '#94a3b8',
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: '#475569', font: { size: 10 }, maxTicksLimit: 10 },
+                grid: { color: '#1e2535' },
+              },
+              y: {
+                ticks: { color: '#475569', font: { size: 10 } },
+                grid: { color: '#1e2535' },
+              },
+            },
+          },
+        });
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>

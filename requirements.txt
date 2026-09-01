@@ -1,7 +1,7 @@
-torch>=2.0.0
 pymunk>=6.0.0
 pygame>=2.5.0
 numpy>=1.24.0
 flask>=3.0.0
 Pillow>=10.0.0
 gymnasium>=1.0.0
+gunicorn>=21.2.0
