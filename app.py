@@ -1,9 +1,147 @@
 import csv
 import json
 import os
-from flask import Flask, jsonify, render_template
+import threading
+import time
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
+
+import numpy as np
+import torch
+
+from src.environment import CreatureEnv
+from src.evolution import Population
+from src.model import CreatureBrain
 
 app = Flask(__name__)
+
+# Global Training State
+training_lock = threading.Lock()
+training_state = {
+    "is_training": False,
+    "current_generation": 0,
+    "total_generations": 100,
+    "best_fitness": None,
+    "avg_fitness": None,
+    "diversity_score": None,
+    "population_size": 50,
+    "mutation_rate": 0.15,
+    "fitness_mode": "baseline",
+    "workers": 4,
+    "paused": False,
+    "error": None,
+}
+training_thread = None
+
+
+def atomic_torch_save(obj, path):
+    """Save PyTorch tensor or state_dict atomically to avoid partial reads."""
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+    tmp_path = path + ".tmp"
+    torch.save(obj, tmp_path)
+    os.replace(tmp_path, path)
+
+
+def run_training_loop():
+    global training_state
+    try:
+        os.makedirs("models", exist_ok=True)
+        os.makedirs("logs", exist_ok=True)
+
+        history_path = os.path.join("logs", "history.csv")
+        if not os.path.exists(history_path):
+            with open(history_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    ["Generation", "Best_Fitness", "Average_Fitness", "Worst_Fitness", "Diversity_Score"]
+                )
+
+        pop = Population(
+            CreatureBrain,
+            pop_size=training_state["population_size"],
+            mutation_rate=training_state["mutation_rate"],
+        )
+
+        for gen in range(training_state["total_generations"]):
+            while training_state["paused"] and training_state["is_training"]:
+                time.sleep(0.5)
+
+            if not training_state["is_training"]:
+                break
+
+            training_state["current_generation"] = gen + 1
+            pop.mutation_rate = training_state["mutation_rate"]
+
+            # Evaluate population
+            pop.evaluate(fitness_mode=training_state["fitness_mode"])
+
+            gen_best_fitness = max(pop.fitnesses)
+            gen_best_idx = pop.fitnesses.index(gen_best_fitness)
+            avg_fit = float(np.mean(pop.fitnesses))
+            worst_fit = float(np.min(pop.fitnesses))
+
+            all_params = []
+            for model in pop.models:
+                params = torch.cat([p.flatten() for p in model.parameters()]).detach().numpy()
+                all_params.append(params)
+            diversity = float(np.mean(np.std(np.array(all_params), axis=0)))
+
+            training_state["best_fitness"] = float(gen_best_fitness)
+            training_state["avg_fitness"] = avg_fit
+            training_state["diversity_score"] = diversity
+
+            # Save session best
+            atomic_torch_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.pth"))
+
+            # Save top 5
+            sorted_indices = np.argsort(pop.fitnesses)[::-1]
+            for idx_rank in range(min(5, len(pop.models))):
+                atomic_torch_save(
+                    pop.models[sorted_indices[idx_rank]].state_dict(),
+                    os.path.join("models", f"top_{idx_rank}.pth"),
+                )
+
+            # Universal record update
+            meta_path = os.path.join("models", "universal_best_meta.json")
+            universal_best_path = os.path.join("models", "universal_best.pth")
+            current_univ = -float("inf")
+            if os.path.exists(meta_path):
+                try:
+                    with open(meta_path, "r", encoding="utf-8") as f:
+                        current_univ = float(json.load(f).get("best_fitness", -float("inf")))
+                except Exception:
+                    pass
+
+            if gen_best_fitness > current_univ:
+                atomic_torch_save(pop.models[gen_best_idx].state_dict(), universal_best_path)
+                tmp_meta = meta_path + ".tmp"
+                with open(tmp_meta, "w", encoding="utf-8") as f:
+                    json.dump(
+                        {
+                            "best_fitness": float(gen_best_fitness),
+                            "generation": int(gen + 1),
+                            "fitness_mode": training_state["fitness_mode"],
+                            "pop_size": training_state["population_size"],
+                            "mutation_rate": training_state["mutation_rate"],
+                            "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        },
+                        f,
+                        indent=2,
+                    )
+                os.replace(tmp_meta, meta_path)
+
+
+            with open(history_path, "a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow([gen + 1, round(gen_best_fitness, 2), round(avg_fit, 2), round(worst_fit, 2), round(diversity, 4)])
+
+            pop.evolve()
+            time.sleep(0.01)
+
+    except Exception as e:
+        training_state["error"] = str(e)
+    finally:
+        training_state["is_training"] = False
+        training_state["paused"] = False
 
 
 @app.route("/")
@@ -52,11 +190,7 @@ def get_best():
 
 @app.route("/api/random")
 def get_random():
-    """Run one episode with a fresh, untrained CreatureBrain and return its fitness."""
     try:
-        from src.environment import CreatureEnv
-        from src.model import CreatureBrain
-
         model = CreatureBrain()
         env = CreatureEnv(fitness_mode="baseline")
         state = env.reset()
@@ -76,6 +210,119 @@ def get_random():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/training/status")
+def get_training_status():
+    return jsonify(training_state)
+
+
+@app.route("/api/training/start", methods=["POST"])
+def start_training():
+    global training_thread, training_state
+    if training_state["is_training"]:
+        return jsonify({"message": "Training already in progress"}), 400
+
+    data = request.get_json() or {}
+    training_state["total_generations"] = int(data.get("generations", 50))
+    training_state["population_size"] = int(data.get("pop_size", 50))
+    training_state["mutation_rate"] = float(data.get("mutation_rate", 0.15))
+    training_state["fitness_mode"] = str(data.get("fitness_mode", "baseline"))
+    training_state["is_training"] = True
+    training_state["paused"] = False
+    training_state["error"] = None
+
+    training_thread = threading.Thread(target=run_training_loop, daemon=True)
+    training_thread.start()
+    return jsonify({"message": "Training started", "state": training_state})
+
+
+@app.route("/api/training/pause", methods=["POST"])
+def pause_training():
+    if not training_state["is_training"]:
+        return jsonify({"message": "No active training to pause"}), 400
+    training_state["paused"] = not training_state["paused"]
+    return jsonify({"paused": training_state["paused"]})
+
+
+@app.route("/api/training/stop", methods=["POST"])
+def stop_training():
+    training_state["is_training"] = False
+    training_state["paused"] = False
+    return jsonify({"message": "Training stopped"})
+
+
+@app.route("/api/stream/sim")
+def stream_simulation():
+    model_type = request.args.get("model", "best")  # 'best', 'universal', 'top_0', 'random'
+
+    def generate():
+        brain = CreatureBrain()
+        if model_type == "universal" and os.path.exists(os.path.join("models", "universal_best.pth")):
+            brain.load_state_dict(torch.load(os.path.join("models", "universal_best.pth"), weights_only=True))
+        elif model_type == "best" and os.path.exists(os.path.join("models", "best_model.pth")):
+            brain.load_state_dict(torch.load(os.path.join("models", "best_model.pth"), weights_only=True))
+        elif model_type.startswith("top_"):
+            top_path = os.path.join("models", f"{model_type}.pth")
+            if os.path.exists(top_path):
+                brain.load_state_dict(torch.load(top_path, weights_only=True))
+        brain.eval()
+
+        env = CreatureEnv(fitness_mode="baseline")
+        state = env.reset()
+        done = False
+        step_idx = 0
+
+        while True:
+            action = brain.get_action(state)
+            state, reward, done, fallen = env.step(action)
+            step_idx += 1
+
+            frame = env.get_render_state()
+            frame["done"] = bool(done)
+            frame["fallen"] = bool(fallen)
+            frame["reward"] = float(reward)
+            frame["actions"] = [round(float(a), 3) for a in action]
+            frame["distance_meters"] = round(float(env.torso.position.x - 400.0) * 0.02, 2)
+
+            yield f"data: {json.dumps(frame)}\n\n"
+            time.sleep(1.0 / 45.0)
+
+            if done or step_idx >= 600:
+                state = env.reset()
+                step_idx = 0
+                time.sleep(0.4)
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/api/models/download/<filename>")
+def download_model(filename):
+    """Secure endpoint to download model checkpoints directly from browser."""
+    safe_names = ["universal_best.pth", "best_model.pth", "top_0.pth", "top_1.pth", "top_2.pth", "top_3.pth", "top_4.pth"]
+    if filename not in safe_names:
+        return jsonify({"error": "Invalid model filename"}), 400
+    models_dir = os.path.abspath("models")
+    return send_from_directory(models_dir, filename, as_attachment=True)
+
+
+@app.route("/api/logs/tail")
+def get_log_tail():
+    """Returns the last N lines from evolution.log."""
+    log_file = os.path.join("logs", "evolution.log")
+    if not os.path.exists(log_file):
+        return jsonify([])
+    try:
+        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+        return jsonify(lines[-50:])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, threaded=True)
+

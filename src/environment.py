@@ -174,3 +174,31 @@ class CreatureEnv:
         state.append(float(np.cos(phase)))
 
         return np.array(state, dtype=np.float32)
+
+    def get_render_state(self):
+        """Returns coordinate dictionary for lightweight browser HTML5 canvas rendering."""
+        return {
+            "torso": {
+                "x": float(self.torso.position.x),
+                "y": float(self.torso.position.y),
+                "angle": float(self.torso.angle),
+                "width": 60,
+                "height": 20,
+            },
+            "legs": [
+                {
+                    "x": float(leg.position.x),
+                    "y": float(leg.position.y),
+                    "angle": float(leg.angle),
+                    "width": 10,
+                    "height": 40,
+                }
+                for leg in self.legs
+            ],
+            "ground_y": 500,
+            "steps": int(self.steps),
+            "distance": float(self.torso.position.x - 400.0),
+            "velocity_x": float(self.torso.velocity.x),
+            "angle": float(self.torso.angle),
+        }
+

@@ -3,408 +3,1053 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Evolution-1 — Creature Walker Dashboard</title>
+  <title>Evolution-1 Locomotion Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg: #09090b;
+      --card-bg: #121214;
+      --border: #27272a;
+      --border-light: #3f3f46;
+      --text-main: #fafafa;
+      --text-muted: #71717a;
+      --text-sub: #a1a1aa;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #3b82f6;
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
-      background: #0b0d14;
-      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      background-color: var(--bg);
+      color: var(--text-main);
       min-height: 100vh;
-      padding: 2rem 1rem;
+      padding: 1.5rem;
+      font-size: 13px;
     }
 
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* Top Navigation Header */
     header {
-      text-align: center;
-      margin-bottom: 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
     }
 
-    header h1 {
-      font-size: 2rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #818cf8, #34d399);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ffffff;
       letter-spacing: -0.5px;
     }
 
-    header p {
-      color: #64748b;
-      margin-top: 0.4rem;
-      font-size: 0.9rem;
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
     }
 
-    .grid {
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      background: #18181b;
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--green);
+    }
+
+    .status-indicator.idle { background: #52525b; }
+    .status-indicator.running { background: var(--green); }
+    .status-indicator.paused { background: var(--yellow); }
+
+    /* Telemetry KPI Cards */
+    .metrics-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.25rem;
-      max-width: 1100px;
-      margin: 0 auto 2rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
     }
 
-    .card {
-      background: #131722;
-      border: 1px solid #1e2535;
-      border-radius: 16px;
-      padding: 1.5rem;
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.2s, border-color 0.2s;
+    @media (max-width: 900px) {
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
     }
 
-    .card:hover { transform: translateY(-2px); border-color: #2d3a52; }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      border-radius: 16px 16px 0 0;
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
     }
 
-    .card.evolved::before  { background: linear-gradient(90deg, #818cf8, #6366f1); }
-    .card.random::before   { background: linear-gradient(90deg, #34d399, #059669); }
-
-    .card-label {
+    .metric-label {
       font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 1.5px;
       text-transform: uppercase;
-      margin-bottom: 0.5rem;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
     }
 
-    .card.evolved .card-label { color: #818cf8; }
-    .card.random  .card-label { color: #34d399; }
+    .metric-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
 
-    .card-title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #cbd5e1;
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    /* Main Grid Layout */
+    .workbench-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 1.25rem;
       margin-bottom: 1.25rem;
     }
 
-    .fitness-score {
-      font-size: 3.5rem;
-      font-weight: 800;
-      line-height: 1;
-      letter-spacing: -2px;
+    @media (max-width: 1000px) {
+      .workbench-grid { grid-template-columns: 1fr; }
     }
 
-    .card.evolved .fitness-score { color: #818cf8; }
-    .card.random  .fitness-score { color: #34d399; }
-
-    .fitness-unit {
-      font-size: 0.8rem;
-      color: #475569;
-      margin-top: 0.25rem;
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem;
     }
 
-    .meta-list {
-      margin-top: 1.25rem;
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Simulation Viewport Canvas */
+    .viewport {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    canvas#simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .viewport-hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 4px;
+      pointer-events: none;
     }
 
-    .meta-row {
+    .viewport-tools {
+      position: absolute;
+      top: 10px;
+      right: 10px;
       display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
+      gap: 4px;
     }
 
-    .meta-key { color: #475569; }
-    .meta-val { color: #94a3b8; font-weight: 600; }
-
-    /* Improvement badge */
-    .badge {
-      display: inline-block;
-      margin-top: 1rem;
-      padding: 0.3rem 0.75rem;
-      border-radius: 999px;
+    .hud-chip {
+      background: rgba(18, 18, 20, 0.9);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.5rem;
+      border-radius: 2px;
       font-size: 0.75rem;
-      font-weight: 700;
+      color: var(--text-sub);
     }
 
-    .badge.positive { background: #0f2a1e; color: #34d399; border: 1px solid #065f46; }
-    .badge.negative { background: #1f1014; color: #f87171; border: 1px solid #7f1d1d; }
-
-    /* Bar comparison */
-    .compare-card {
-      max-width: 1100px;
-      margin: 0 auto 2rem;
+    .hud-chip strong {
+      color: #ffffff;
+      font-weight: 600;
     }
 
-    .compare-card .card-title {
-      margin-bottom: 1.5rem;
-      font-size: 0.95rem;
+    /* Motor Telemetry Bar */
+    .motor-telemetry {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding: 0.6rem;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 4px;
     }
 
-    .bar-row {
-      margin-bottom: 1.1rem;
+    .motor-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
     }
 
-    .bar-header {
+    .motor-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8rem;
-      margin-bottom: 0.4rem;
-      color: #94a3b8;
+      font-size: 0.65rem;
+      color: var(--text-muted);
     }
 
-    .bar-track {
-      background: #1e2535;
-      border-radius: 999px;
-      height: 10px;
+    .motor-track {
+      background: #18181b;
+      height: 6px;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .motor-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 0%;
+      background: #ffffff;
+      transition: all 0.05s linear;
+    }
+
+    .viewport-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+
+    /* Buttons & Model Selectors */
+    .btn-group {
+      display: flex;
+      gap: 0.35rem;
+    }
+
+    .btn {
+      background: #18181b;
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.45rem 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: #27272a;
+      border-color: var(--border-light);
+      color: #ffffff;
+    }
+
+    .btn.active {
+      background: #ffffff;
+      color: #000000;
+      border-color: #ffffff;
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-action-start {
+      background: var(--green);
+      color: #000000;
+      border-color: var(--green);
+      flex: 1;
+    }
+    .btn-action-start:hover:not(:disabled) {
+      background: #16a34a;
+      border-color: #16a34a;
+      color: #000000;
+    }
+
+    .btn-action-pause {
+      background: var(--yellow);
+      color: #000000;
+      border-color: var(--yellow);
+      flex: 1;
+    }
+    .btn-action-pause:hover:not(:disabled) {
+      background: #ca8a04;
+      border-color: #ca8a04;
+      color: #000000;
+    }
+
+    .btn-action-stop {
+      background: var(--red);
+      color: #ffffff;
+      border-color: var(--red);
+      flex: 1;
+    }
+    .btn-action-stop:hover:not(:disabled) {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
+    /* Controls Panel */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-field.full { grid-column: span 2; }
+
+    .form-field label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .form-field input, .form-field select {
+      background: #09090b;
+      border: 1px solid var(--border);
+      color: #ffffff;
+      padding: 0.5rem 0.65rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .form-field input:focus, .form-field select:focus {
+      border-color: var(--border-light);
+    }
+
+    .form-field input[type="range"] {
+      padding: 0;
+      accent-color: #ffffff;
+    }
+
+    /* Progress bar */
+    .progress-bar-container {
+      margin-top: 1rem;
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      height: 6px;
       overflow: hidden;
     }
 
-    .bar-fill {
+    .progress-bar-fill {
       height: 100%;
-      border-radius: 999px;
-      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+      background: #ffffff;
+      width: 0%;
+      transition: width 0.2s linear;
     }
 
-    .bar-fill.evolved { background: linear-gradient(90deg, #818cf8, #6366f1); }
-    .bar-fill.random  { background: linear-gradient(90deg, #34d399, #059669); }
-
-    /* Chart */
-    .chart-card {
-      max-width: 1100px;
-      margin: 0 auto 2rem;
+    /* Tabbed Lower Section */
+    .tabs-bar {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
     }
 
-    .chart-wrapper { position: relative; height: 280px; }
-
-    .loading {
-      color: #475569;
-      font-size: 0.85rem;
-      font-style: italic;
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      padding: 0.5rem 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: -1px;
     }
 
-    .status-dot {
-      display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      margin-right: 6px;
-      animation: pulse 2s infinite;
+    .tab-btn:hover { color: #ffffff; }
+    .tab-btn.active {
+      color: #ffffff;
+      border-bottom-color: #ffffff;
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Chart Container */
+    .chart-panel {
+      position: relative;
+      height: 240px;
+      width: 100%;
     }
+
+    /* Log Stream Terminal */
+    .terminal-box {
+      background: #000000;
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      height: 240px;
+      overflow-y: auto;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: #a1a1aa;
+    }
+
+    .terminal-line { margin-bottom: 2px; white-space: pre-wrap; }
+    .terminal-line.record { color: var(--green); font-weight: 600; }
+
+    /* Download Model Cards */
+    .downloads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+    }
+
+    .download-card {
+      background: #09090b;
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .download-name { font-weight: 600; color: #ffffff; font-size: 0.8rem; }
+    .download-desc { font-size: 0.7rem; color: var(--text-muted); }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🦵 Evolution-1 Dashboard</h1>
-    <p>Genetic algorithm creature walker — fitness comparison</p>
-  </header>
-
-  <!-- Stat Cards -->
-  <div class="grid">
-    <!-- Best evolved model -->
-    <div class="card evolved" id="best-card">
-      <div class="card-label">Best Evolved</div>
-      <div class="card-title">All-Time Champion</div>
-      <div class="fitness-score" id="best-fitness"><span class="loading">—</span></div>
-      <div class="fitness-unit">fitness score</div>
-      <div class="meta-list" id="best-meta"></div>
-    </div>
-
-    <!-- Random untrained model -->
-    <div class="card random" id="random-card">
-      <div class="card-label">Random (Untrained)</div>
-      <div class="card-title">Fresh Random Weights</div>
-      <div class="fitness-score" id="random-fitness">
-        <span class="loading"><span class="status-dot" style="background:#34d399"></span>Running…</span>
-      </div>
-      <div class="fitness-unit">fitness score</div>
-      <div id="random-badge" style="margin-top:1rem"></div>
-    </div>
-  </div>
-
-  <!-- Bar comparison -->
-  <div class="compare-card">
-    <div class="card">
-      <div class="card-title">Fitness Comparison</div>
-      <div id="bars">
-        <div class="bar-row">
-          <div class="bar-header">
-            <span>🏆 Best Evolved</span>
-            <span id="bar-label-evolved">—</span>
-          </div>
-          <div class="bar-track"><div class="bar-fill evolved" id="bar-evolved" style="width:0%"></div></div>
-        </div>
-        <div class="bar-row">
-          <div class="bar-header">
-            <span>🎲 Random</span>
-            <span id="bar-label-random">—</span>
-          </div>
-          <div class="bar-track"><div class="bar-fill random" id="bar-random" style="width:0%"></div></div>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div>
+          <div class="brand-title">EVOLUTION-1 LOCOMOTION LAB</div>
+          <div class="brand-subtitle">Quadruped Physics Engine • Multi-Core Genetic Algorithm</div>
         </div>
       </div>
-    </div>
-  </div>
+      <div class="header-status">
+        <div class="status-indicator idle" id="statusIndicator"></div>
+        <span id="statusText">System Ready</span>
+      </div>
+    </header>
 
-  <!-- History chart -->
-  <div class="chart-card">
-    <div class="card">
-      <div class="card-title">Fitness Over Generations</div>
-      <div class="chart-wrapper">
-        <canvas id="historyChart"></canvas>
+    <!-- Top Metrics KPI Row -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Universal Record</div>
+        <div class="metric-value" id="valUnivRecord">—</div>
+        <div class="metric-sub" id="subUnivMeta">Gen 0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Training Progress</div>
+        <div class="metric-value" id="valGenProgress">0 / 0</div>
+        <div class="metric-sub" id="subTrainStatus">Idle</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Best Active Fitness</div>
+        <div class="metric-value" id="valBestFitness">—</div>
+        <div class="metric-sub" id="subAvgFitness">Avg: —</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Population Diversity</div>
+        <div class="metric-value" id="valDiversity">—</div>
+        <div class="metric-sub">Weight Variance σ</div>
+      </div>
+    </div>
+
+    <!-- Workbench Grid -->
+    <div class="workbench-grid">
+      <!-- Left: Simulation Viewport -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Physics Simulation</div>
+          <div class="btn-group">
+            <button class="btn active" data-model="universal" onclick="switchModel('universal')">Universal Best</button>
+            <button class="btn" data-model="best" onclick="switchModel('best')">Session Best</button>
+            <button class="btn" data-model="random" onclick="switchModel('random')">Random (Untrained)</button>
+          </div>
+        </div>
+
+        <div class="viewport" id="viewport">
+          <canvas id="simCanvas"></canvas>
+          <div class="viewport-hud">
+            <div class="hud-chip">Distance: <strong id="hudDistance">0.0 px (0.00 m)</strong></div>
+            <div class="hud-chip">Velocity: <strong id="hudSpeed">0.0 px/s</strong></div>
+            <div class="hud-chip">Torso Angle: <strong id="hudAngle">0.00 rad</strong></div>
+            <div class="hud-chip">Step: <strong id="hudStep">0 / 600</strong></div>
+          </div>
+          <div class="viewport-tools">
+            <button class="btn btn-sm" onclick="zoom(1.2)" title="Zoom In">+</button>
+            <button class="btn btn-sm" onclick="zoom(0.8)" title="Zoom Out">-</button>
+            <button class="btn btn-sm" onclick="resetZoom()" title="Reset Camera">1x</button>
+          </div>
+        </div>
+
+        <!-- Real-time Motor Force Telemetry Bars -->
+        <div class="motor-telemetry">
+          <div class="motor-item">
+            <div class="motor-header"><span>REAR-OUTER</span><span id="mVal0">0%</span></div>
+            <div class="motor-track"><div class="motor-fill" id="mFill0"></div></div>
+          </div>
+          <div class="motor-item">
+            <div class="motor-header"><span>REAR-INNER</span><span id="mVal1">0%</span></div>
+            <div class="motor-track"><div class="motor-fill" id="mFill1"></div></div>
+          </div>
+          <div class="motor-item">
+            <div class="motor-header"><span>FRONT-INNER</span><span id="mVal2">0%</span></div>
+            <div class="motor-track"><div class="motor-fill" id="mFill2"></div></div>
+          </div>
+          <div class="motor-item">
+            <div class="motor-header"><span>FRONT-OUTER</span><span id="mVal3">0%</span></div>
+            <div class="motor-track"><div class="motor-fill" id="mFill3"></div></div>
+          </div>
+        </div>
+
+        <div class="viewport-footer">
+          <span style="color:var(--text-muted); font-size:0.75rem;">60 FPS Client-Side Pymunk Telemetry Stream</span>
+          <button class="btn btn-sm" onclick="reconnectStream()">↺ Reset Stream</button>
+        </div>
+      </div>
+
+      <!-- Right: Evolution Controller -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Training Controller</div>
+          <span style="color:var(--text-muted); font-size:0.75rem;">Multiprocessing Engine</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Generations <span id="lblGens">50</span></label>
+            <input type="number" id="inpGens" value="50" min="5" max="1000" onchange="document.getElementById('lblGens').textContent = this.value" />
+          </div>
+          <div class="form-field">
+            <label>Pop Size <span id="lblPop">50</span></label>
+            <input type="number" id="inpPop" value="50" min="10" max="500" onchange="document.getElementById('lblPop').textContent = this.value" />
+          </div>
+          <div class="form-field full">
+            <label>Mutation Rate <span id="lblMutation">0.15</span></label>
+            <input type="range" id="inpMutation" min="0.01" max="0.50" step="0.01" value="0.15" oninput="document.getElementById('lblMutation').textContent = this.value" />
+          </div>
+          <div class="form-field full">
+            <label>Fitness Function Mode</label>
+            <select id="inpMode">
+              <option value="baseline">Baseline (Forward Speed)</option>
+              <option value="ground_termination" selected>Ground Termination (Fall Penalty)</option>
+              <option value="tilt_penalized">Tilt Penalized (Upright)</option>
+              <option value="energy_penalized">Energy Penalized</option>
+              <option value="all_penalties">All Penalties Combined</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top:1.25rem">
+          <button class="btn btn-action-start" id="btnStart" onclick="startTraining()">▶ Run Evolution</button>
+          <button class="btn btn-action-pause" id="btnPause" onclick="togglePause()" disabled>⏸ Pause</button>
+          <button class="btn btn-action-stop" id="btnStop" onclick="stopTraining()" disabled>⏹ Stop</button>
+        </div>
+
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="trainProgress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lower Section: Tabs (Analytics, Live Logs, Checkpoints) -->
+    <div class="panel">
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="switchTab('chart')">📈 Convergence & Diversity</button>
+        <button class="tab-btn" onclick="switchTab('logs')">📜 Live Evolution Logs</button>
+        <button class="tab-btn" onclick="switchTab('models')">💾 Model Checkpoints</button>
+      </div>
+
+      <!-- Tab 1: Chart -->
+      <div class="tab-content active" id="tab-chart">
+        <div class="chart-panel">
+          <canvas id="fitnessChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Tab 2: Logs -->
+      <div class="tab-content" id="tab-logs">
+        <div class="terminal-box" id="logTerminal">
+          <div class="terminal-line">Connecting to evolution log stream...</div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Model Checkpoints -->
+      <div class="tab-content" id="tab-models">
+        <div class="downloads-grid">
+          <div class="download-card">
+            <div>
+              <div class="download-name">universal_best.pth</div>
+              <div class="download-desc">All-time record genome</div>
+            </div>
+            <a href="/api/models/download/universal_best.pth" class="btn btn-sm">Download</a>
+          </div>
+          <div class="download-card">
+            <div>
+              <div class="download-name">best_model.pth</div>
+              <div class="download-desc">Current session best</div>
+            </div>
+            <a href="/api/models/download/best_model.pth" class="btn btn-sm">Download</a>
+          </div>
+          <div class="download-card">
+            <div>
+              <div class="download-name">top_0.pth</div>
+              <div class="download-desc">Gen champion</div>
+            </div>
+            <a href="/api/models/download/top_0.pth" class="btn btn-sm">Download</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // ── helpers ──────────────────────────────────────────────────────────────
-    const fmt = v => (v == null ? '—' : Number(v).toFixed(1));
+    // ── Canvas Telemetry Renderer ─────────────────────────────────────────────
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let sseSource = null;
+    let currentModel = 'universal';
+    let currentFrame = null;
+    let smoothCamX = 400;
+    let currentZoom = 1.0;
 
-    function drawBars(evolved, random) {
-      const max = Math.max(Math.abs(evolved ?? 0), Math.abs(random ?? 0), 1);
-      const pct = v => Math.max(0, Math.min(100, (v / max) * 100)).toFixed(1) + '%';
-      document.getElementById('bar-evolved').style.width = pct(evolved ?? 0);
-      document.getElementById('bar-random').style.width  = pct(random  ?? 0);
-      document.getElementById('bar-label-evolved').textContent = fmt(evolved);
-      document.getElementById('bar-label-random').textContent  = fmt(random);
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function zoom(factor) {
+      currentZoom = Math.max(0.4, Math.min(2.5, currentZoom * factor));
     }
 
-    // ── /api/best ─────────────────────────────────────────────────────────────
-    let evolvedFitness = null;
+    function resetZoom() {
+      currentZoom = 1.0;
+    }
 
-    fetch('/api/best')
-      .then(r => r.json())
-      .then(data => {
-        if (!data || Object.keys(data).length === 0) {
-          document.getElementById('best-fitness').textContent = 'No data';
-          return;
+    function connectStream(model) {
+      if (sseSource) sseSource.close();
+      sseSource = new EventSource(`/api/stream/sim?model=${model}`);
+
+      sseSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          currentFrame = data;
+          updateHUD(data);
+          updateMotorTelemetry(data.actions);
+        } catch (e) {}
+      };
+
+      sseSource.onerror = () => {
+        document.getElementById('hudSpeed').textContent = 'Disconnected';
+      };
+    }
+
+    function switchModel(model) {
+      currentModel = model;
+      document.querySelectorAll('.btn[data-model]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-model') === model);
+      });
+      connectStream(model);
+    }
+
+    function reconnectStream() {
+      connectStream(currentModel);
+    }
+
+    function updateHUD(data) {
+      const dist = (data.distance || 0).toFixed(1);
+      const meters = (data.distance_meters || (data.distance || 0) * 0.02).toFixed(2);
+      document.getElementById('hudDistance').textContent = `${dist} px (${meters} m)`;
+      document.getElementById('hudSpeed').textContent = (data.velocity_x || 0).toFixed(1) + ' px/s';
+      document.getElementById('hudAngle').textContent = (data.angle || 0).toFixed(2) + ' rad';
+      document.getElementById('hudStep').textContent = `${data.steps || 0} / 600`;
+    }
+
+    function updateMotorTelemetry(actions) {
+      if (!actions || actions.length < 4) return;
+      actions.forEach((val, i) => {
+        const pct = Math.max(-100, Math.min(100, val * 100));
+        const valElem = document.getElementById(`mVal${i}`);
+        const fillElem = document.getElementById(`mFill${i}`);
+        if (valElem) valElem.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%`;
+        if (fillElem) {
+          if (pct >= 0) {
+            fillElem.style.left = '50%';
+            fillElem.style.width = `${pct / 2}%`;
+            fillElem.style.background = '#22c55e';
+          } else {
+            fillElem.style.left = `${50 + pct / 2}%`;
+            fillElem.style.width = `${Math.abs(pct) / 2}%`;
+            fillElem.style.background = '#3b82f6';
+          }
         }
-        evolvedFitness = data.best_fitness ?? null;
-        document.getElementById('best-fitness').textContent = fmt(evolvedFitness);
+      });
+    }
 
-        const meta = document.getElementById('best-meta');
-        const rows = [
-          ['Generation',   data.generation ?? '—'],
-          ['Fitness Mode', data.fitness_mode ?? '—'],
-          ['Saved At',     data.saved_at ?? '—'],
-          ['Pop Size',     data.pop_size ?? '—'],
-          ['Mutation Rate',data.mutation_rate != null ? data.mutation_rate.toFixed(3) : '—'],
-        ];
-        meta.innerHTML = rows.map(([k, v]) =>
-          `<div class="meta-row"><span class="meta-key">${k}</span><span class="meta-val">${v}</span></div>`
-        ).join('');
+    function render() {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        drawBars(evolvedFitness, null);
-      })
-      .catch(() => { document.getElementById('best-fitness').textContent = 'Error'; });
+      if (currentFrame && currentFrame.torso) {
+        const torso = currentFrame.torso;
+        smoothCamX += (torso.x - smoothCamX) * 0.15;
 
-    // ── /api/random ───────────────────────────────────────────────────────────
-    fetch('/api/random')
-      .then(r => r.json())
-      .then(data => {
-        const rf = data.fitness ?? null;
-        document.getElementById('random-fitness').textContent = fmt(rf);
+        const offsetX = canvas.width / 2 - smoothCamX * currentZoom;
+        const offsetY = canvas.height - 490 * currentZoom;
 
-        // Improvement badge
-        const badge = document.getElementById('random-badge');
-        if (evolvedFitness != null && rf != null) {
-          const diff = evolvedFitness - rf;
-          const sign = diff >= 0 ? '+' : '';
-          badge.innerHTML = `<span class="badge ${diff >= 0 ? 'positive' : 'negative'}">
-            Evolution improved fitness by ${sign}${fmt(diff)}
-          </span>`;
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(currentZoom, currentZoom);
+        ctx.translate(-canvas.width / 2 + (offsetX / currentZoom), -canvas.height / 2 + (offsetY / currentZoom));
+
+        // Ground Plane Line
+        ctx.strokeStyle = '#27272a';
+        ctx.lineWidth = 2 / currentZoom;
+        ctx.beginPath();
+        ctx.moveTo(-10000, 500);
+        ctx.lineTo(10000, 500);
+        ctx.stroke();
+
+        // Ground Distance Ticks
+        ctx.fillStyle = '#71717a';
+        ctx.font = '11px JetBrains Mono';
+        const startX = Math.floor((smoothCamX - (canvas.width / currentZoom)) / 100) * 100;
+        const endX = smoothCamX + (canvas.width / currentZoom);
+
+        for (let x = startX; x <= endX; x += 100) {
+          ctx.beginPath();
+          ctx.moveTo(x, 500);
+          ctx.lineTo(x, 510);
+          ctx.strokeStyle = '#3f3f46';
+          ctx.lineWidth = 1 / currentZoom;
+          ctx.stroke();
+          ctx.fillText(`${x - 400}px`, x - 15, 525);
         }
 
-        drawBars(evolvedFitness, rf);
-      })
-      .catch(() => { document.getElementById('random-fitness').textContent = 'Error'; });
-
-    // ── /api/history chart ────────────────────────────────────────────────────
-    fetch('/api/history')
-      .then(r => r.json())
-      .then(rows => {
-        if (!Array.isArray(rows) || rows.length === 0) {
-          document.querySelector('.chart-wrapper').innerHTML =
-            '<p style="color:#475569;font-size:.85rem;padding:2rem 0">No training history yet. Run main.py to start training.</p>';
-          return;
+        // Back Legs (Solid Blue)
+        if (currentFrame.legs) {
+          currentFrame.legs.slice(0, 2).forEach(leg => {
+            drawRotatedRect(ctx, leg.x, leg.y, leg.width, leg.height, leg.angle, '#1d4ed8', '#3b82f6');
+          });
         }
+
+        // Torso (Solid White with Crisp Dark Border)
+        drawRotatedRect(ctx, torso.x, torso.y, torso.width, torso.height, torso.angle, '#ffffff', '#e4e4e7');
+
+        // Eye Indicator
+        ctx.save();
+        ctx.translate(torso.x, torso.y);
+        ctx.rotate(torso.angle);
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(20, -3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Front Legs (Solid Green)
+        if (currentFrame.legs) {
+          currentFrame.legs.slice(2, 4).forEach(leg => {
+            drawRotatedRect(ctx, leg.x, leg.y, leg.width, leg.height, leg.angle, '#22c55e', '#16a34a');
+          });
+        }
+
+        ctx.restore();
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    function drawRotatedRect(c, x, y, width, height, angle, fill, stroke) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(angle);
+      c.fillStyle = fill;
+      c.strokeStyle = stroke;
+      c.lineWidth = 1.5;
+
+      const rx = -width / 2;
+      const ry = -height / 2;
+      c.beginPath();
+      c.rect(rx, ry, width, height);
+      c.fill();
+      c.stroke();
+      c.restore();
+    }
+
+    // ── Tab Switcher ──────────────────────────────────────────────────────────
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tabId));
+      });
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const activeEl = document.getElementById(`tab-${tabId}`);
+      if (activeEl) activeEl.classList.add('active');
+    }
+
+    // ── Training State & API ──────────────────────────────────────────────────
+    async function pollTrainingStatus() {
+      try {
+        const res = await fetch('/api/training/status');
+        const state = await res.json();
+
+        const btnStart = document.getElementById('btnStart');
+        const btnPause = document.getElementById('btnPause');
+        const btnStop = document.getElementById('btnStop');
+        const indicator = document.getElementById('statusIndicator');
+        const text = document.getElementById('statusText');
+
+        if (state.is_training) {
+          btnStart.disabled = true;
+          btnPause.disabled = false;
+          btnStop.disabled = false;
+          btnPause.textContent = state.paused ? '▶ Resume' : '⏸ Pause';
+
+          indicator.className = state.paused ? 'status-indicator paused' : 'status-indicator running';
+          text.textContent = state.paused ? 'Evolution Paused' : `Evolving Gen ${state.current_generation} / ${state.total_generations}`;
+
+          document.getElementById('valGenProgress').textContent = `${state.current_generation} / ${state.total_generations}`;
+          document.getElementById('subTrainStatus').textContent = state.paused ? 'Paused' : 'Running Rollouts';
+
+          if (state.best_fitness != null) {
+            document.getElementById('valBestFitness').textContent = state.best_fitness.toFixed(1);
+          }
+          if (state.avg_fitness != null) {
+            document.getElementById('subAvgFitness').textContent = `Avg: ${state.avg_fitness.toFixed(1)}`;
+          }
+          if (state.diversity_score != null) {
+            document.getElementById('valDiversity').textContent = state.diversity_score.toFixed(4);
+          }
+
+          const pct = Math.min(100, (state.current_generation / state.total_generations) * 100);
+          document.getElementById('trainProgress').style.width = pct + '%';
+        } else {
+          btnStart.disabled = false;
+          btnPause.disabled = true;
+          btnStop.disabled = true;
+          indicator.className = 'status-indicator idle';
+          text.textContent = 'System Ready';
+          document.getElementById('subTrainStatus').textContent = 'Idle';
+        }
+      } catch (e) {}
+    }
+
+    async function startTraining() {
+      const payload = {
+        generations: parseInt(document.getElementById('inpGens').value),
+        pop_size: parseInt(document.getElementById('inpPop').value),
+        mutation_rate: parseFloat(document.getElementById('inpMutation').value),
+        fitness_mode: document.getElementById('inpMode').value
+      };
+
+      await fetch('/api/training/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      pollTrainingStatus();
+    }
+
+    async function togglePause() {
+      await fetch('/api/training/pause', { method: 'POST' });
+      pollTrainingStatus();
+    }
+
+    async function stopTraining() {
+      await fetch('/api/training/stop', { method: 'POST' });
+      pollTrainingStatus();
+    }
+
+    // ── Chart & Log Stream ────────────────────────────────────────────────────
+    let chartInstance = null;
+
+    async function fetchBestMeta() {
+      try {
+        const res = await fetch('/api/best');
+        const data = await res.json();
+        if (data.best_fitness != null) {
+          document.getElementById('valUnivRecord').textContent = data.best_fitness.toFixed(1);
+          document.getElementById('subUnivMeta').textContent = `Gen ${data.generation} • ${data.fitness_mode || 'baseline'}`;
+        }
+      } catch (e) {}
+    }
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/logs/tail');
+        const lines = await res.json();
+        if (!Array.isArray(lines) || lines.length === 0) return;
+        const box = document.getElementById('logTerminal');
+        box.innerHTML = lines.map(l => {
+          const isRec = l.includes('RECORD') || l.includes('UNIVERSAL');
+          return `<div class="terminal-line ${isRec ? 'record' : ''}">${escapeHtml(l.trim())}</div>`;
+        }).join('');
+        box.scrollTop = box.scrollHeight;
+      } catch (e) {}
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch('/api/history');
+        const rows = await res.json();
+        if (!Array.isArray(rows) || rows.length === 0) return;
 
         const labels = rows.map(r => `Gen ${r.Generation}`);
-        const ctx = document.getElementById('historyChart').getContext('2d');
+        const bestData = rows.map(r => r.Best_Fitness);
+        const avgData = rows.map(r => r.Average_Fitness);
+        const divData = rows.map(r => r.Diversity_Score * 100);
 
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              {
-                label: 'Best',
-                data: rows.map(r => r.Best_Fitness),
-                borderColor: '#818cf8',
-                backgroundColor: 'rgba(129,140,248,0.08)',
-                borderWidth: 2,
-                pointRadius: 0,
-                fill: true,
-                tension: 0.4,
-              },
-              {
-                label: 'Average',
-                data: rows.map(r => r.Average_Fitness),
-                borderColor: '#34d399',
-                backgroundColor: 'transparent',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                borderDash: [4, 3],
-                tension: 0.4,
-              },
-              {
-                label: 'Worst',
-                data: rows.map(r => r.Worst_Fitness),
-                borderColor: '#f87171',
-                backgroundColor: 'transparent',
-                borderWidth: 1,
-                pointRadius: 0,
-                borderDash: [2, 4],
-                tension: 0.4,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 600 },
-            plugins: {
-              legend: {
-                labels: { color: '#64748b', font: { size: 11 }, boxWidth: 14 },
-              },
-              tooltip: {
-                backgroundColor: '#131722',
-                borderColor: '#1e2535',
-                borderWidth: 1,
-                titleColor: '#e2e8f0',
-                bodyColor: '#94a3b8',
-              },
+        if (!chartInstance) {
+          const ctxChart = document.getElementById('fitnessChart').getContext('2d');
+          chartInstance = new Chart(ctxChart, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Best Fitness',
+                  data: bestData,
+                  borderColor: '#ffffff',
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  fill: false,
+                  tension: 0.1
+                },
+                {
+                  label: 'Average Fitness',
+                  data: avgData,
+                  borderColor: '#22c55e',
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  borderDash: [4, 4],
+                  fill: false,
+                  tension: 0.1
+                },
+                {
+                  label: 'Diversity (x100)',
+                  data: divData,
+                  borderColor: '#3b82f6',
+                  borderWidth: 1,
+                  pointRadius: 0,
+                  borderDash: [2, 4],
+                  fill: false,
+                  tension: 0.1
+                }
+              ]
             },
-            scales: {
-              x: {
-                ticks: { color: '#475569', font: { size: 10 }, maxTicksLimit: 10 },
-                grid: { color: '#1e2535' },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: false,
+              plugins: {
+                legend: {
+                  labels: {
+                    color: '#a1a1aa',
+                    font: { family: 'JetBrains Mono', size: 11 },
+                    boxWidth: 12
+                  }
+                },
+                tooltip: {
+                  backgroundColor: '#18181b',
+                  borderColor: '#27272a',
+                  borderWidth: 1,
+                  titleColor: '#ffffff',
+                  bodyColor: '#a1a1aa',
+                  titleFont: { family: 'JetBrains Mono' },
+                  bodyFont: { family: 'JetBrains Mono' }
+                }
               },
-              y: {
-                ticks: { color: '#475569', font: { size: 10 } },
-                grid: { color: '#1e2535' },
-              },
-            },
-          },
-        });
-      })
-      .catch(() => {});
+              scales: {
+                x: {
+                  ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
+                  grid: { color: '#18181b' }
+                },
+                y: {
+                  ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 } },
+                  grid: { color: '#18181b' }
+                }
+              }
+            }
+          });
+        } else {
+          chartInstance.data.labels = labels;
+          chartInstance.data.datasets[0].data = bestData;
+          chartInstance.data.datasets[1].data = avgData;
+          chartInstance.data.datasets[2].data = divData;
+          chartInstance.update();
+        }
+      } catch (e) {}
+    }
+
+    // Init
+    connectStream('universal');
+    render();
+    fetchBestMeta();
+    fetchHistory();
+    fetchLogs();
+    setInterval(pollTrainingStatus, 1000);
+    setInterval(fetchHistory, 4000);
+    setInterval(fetchLogs, 2500);
   </script>
 </body>
 </html>

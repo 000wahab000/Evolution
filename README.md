@@ -17,3 +17,39 @@ and yeah no AI slpp btw this si what the project is about am also adding a video
 8/26/2026
 
 ![Evolution-1 walking demo](assets/walking%20body.gif)
+
+## 🗺️ Project Roadmap
+
+- **✅ v1 — Straight-Line Walking (Achieved):** 2D Pymunk quadruped physics, CPG rhythm inputs, fall termination penalty, and idle reward fix to prevent reward hacking.
+- **✅ v2 — Multi-Core Optimization & Web Deployment (Achieved):**
+  - **Multi-Core Training:** Parallel rollout evaluation with Python multiprocessing (`--workers N`), accelerating training by 4x-8x.
+  - **Live Web Dashboard:** Real-time 60 FPS HTML5 Canvas creature animation streaming over Server-Sent Events (SSE).
+  - **Interactive Controls:** Start/pause evolution, tune mutation rates and population sizes dynamically from the web interface.
+  - **Zero-Config Docker:** One-command deployment via `docker compose up` with volume persistence.
+- **⏳ v3 — Procedural Terrain & Obstacles:** Randomly generated hills, slopes, curves, gap jumps, and spike hazards.
+- **⏳ v4 — Horse Morphology & Rider:** Evolving body structure into a horse with a balanced human rider on top.
+- **⏳ v5 — Weaponry & Vision:** Equipping the human rider with a spear and directional vision sensors.
+- **⏳ v6 — Multi-Agent Battle Arena:** Multi-creature tournament battles with combat physics and competitive evolution.
+
+## 🚀 Quick Start (v2)
+
+### 1. Interactive Web Dashboard
+```bash
+python app.py
+```
+Open `http://localhost:8000` in your browser to view the live physics canvas, live convergence curves, and start/pause evolutionary training runs with one click!
+
+### 2. Multi-Core CLI Training
+```bash
+# Train for 100 generations across 4 parallel CPU workers
+python main.py --train --gens 100 --pop 50 --workers 4
+
+# Render the best evolved model in PyGame
+python main.py --render
+```
+
+### 3. Docker Deployment
+```bash
+docker compose up --build
+```
+

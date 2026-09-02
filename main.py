@@ -16,6 +16,8 @@ from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
 
+import multiprocessing
+
 UNIVERSAL_BEST_PATH = os.path.join("models", "universal_best.pth")
 UNIVERSAL_META_PATH = os.path.join("models", "universal_best_meta.json")
 
@@ -30,9 +32,16 @@ def load_universal_best_meta():
     return {}
 
 
+def atomic_torch_save(obj, path):
+    """Save PyTorch tensor or state_dict atomically to avoid partial reads."""
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+    tmp_path = path + ".tmp"
+    torch.save(obj, tmp_path)
+    os.replace(tmp_path, path)
+
+
 def save_universal_best(model, fitness, generation, fitness_mode, pop_size, mutation_rate):
-    os.makedirs("models", exist_ok=True)
-    torch.save(model.state_dict(), UNIVERSAL_BEST_PATH)
+    atomic_torch_save(model.state_dict(), UNIVERSAL_BEST_PATH)
     meta = {
         "best_fitness": float(fitness),
         "generation": int(generation),
@@ -41,23 +50,28 @@ def save_universal_best(model, fitness, generation, fitness_mode, pop_size, muta
         "mutation_rate": float(mutation_rate),
         "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
-    with open(UNIVERSAL_META_PATH, "w") as f:
+    tmp_meta = UNIVERSAL_META_PATH + ".tmp"
+    with open(tmp_meta, "w") as f:
         json.dump(meta, f, indent=2)
+    os.replace(tmp_meta, UNIVERSAL_META_PATH)
 
 
-def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15):
+
+def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15, workers=None):
     os.makedirs("models", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
+
+    if workers is None:
+        workers = os.cpu_count() or 4
 
     meta = load_universal_best_meta()
     universal_best_fitness = float(meta.get("best_fitness", -float("inf")))
     univ_info = f"{universal_best_fitness:.2f}" if universal_best_fitness != -float("inf") else "None"
 
     logging.info(
-        f"Starting training for {generations} generations with population size {pop_size}, mutation_rate {mutation_rate}... "
+        f"Starting training for {generations} generations with population size {pop_size}, mutation_rate {mutation_rate}, workers {workers}... "
         f"(Universal All-Time Record: {univ_info})"
     )
-    env = CreatureEnv(fitness_mode=fitness_mode)
     population = Population(CreatureBrain, pop_size=pop_size, mutation_rate=mutation_rate)
 
     history_path = os.path.join("logs", "history.csv")
@@ -70,75 +84,69 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
     best_overall_fitness = -float("inf")
     best_overall_model = None
 
-    for gen in range(generations):
-        for i, model in enumerate(population.models):
-            state = env.reset()
-            total_reward = 0
-            done = False
+    pool = multiprocessing.Pool(processes=workers) if workers > 1 else None
 
-            while not done:
-                action = model.get_action(state)
-                state, reward, done, fallen = env.step(action)
-                total_reward += reward
+    try:
+        for gen in range(generations):
+            population.evaluate(fitness_mode=fitness_mode, pool=pool)
 
-            if fallen:
-                total_reward -= 100.0
+            gen_best_fitness = max(population.fitnesses)
+            gen_best_idx = population.fitnesses.index(gen_best_fitness)
 
-            population.fitnesses[i] = total_reward
+            # Save session best
+            if gen_best_fitness > best_overall_fitness:
+                best_overall_fitness = gen_best_fitness
+                best_overall_model = population.models[gen_best_idx]
+                atomic_torch_save(best_overall_model.state_dict(), os.path.join("models", "best_model.pth"))
 
-        gen_best_fitness = max(population.fitnesses)
-        gen_best_idx = population.fitnesses.index(gen_best_fitness)
+            # Save universal all-time best
+            if gen_best_fitness > universal_best_fitness:
+                universal_best_fitness = gen_best_fitness
+                save_universal_best(
+                    population.models[gen_best_idx],
+                    gen_best_fitness,
+                    gen,
+                    fitness_mode,
+                    pop_size,
+                    mutation_rate,
+                )
+                logging.info(
+                    f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.pth)"
+                )
 
-        # Save session best
-        if gen_best_fitness > best_overall_fitness:
-            best_overall_fitness = gen_best_fitness
-            best_overall_model = population.models[gen_best_idx]
-            torch.save(best_overall_model.state_dict(), os.path.join("models", "best_model.pth"))
+            # Save top 5 of the current generation for rendering
+            sorted_indices = np.argsort(population.fitnesses)[::-1]
+            for idx_rank in range(min(5, len(population.models))):
+                atomic_torch_save(
+                    population.models[sorted_indices[idx_rank]].state_dict(),
+                    os.path.join("models", f"top_{idx_rank}.pth"),
+                )
 
-        # Save universal all-time best
-        if gen_best_fitness > universal_best_fitness:
-            universal_best_fitness = gen_best_fitness
-            save_universal_best(
-                population.models[gen_best_idx],
-                gen_best_fitness,
-                gen,
-                fitness_mode,
-                pop_size,
-                mutation_rate,
-            )
+            fitnesses = np.array(population.fitnesses)
+            best_fit = np.max(fitnesses)
+            avg_fit = np.mean(fitnesses)
+            worst_fit = np.min(fitnesses)
+
+            all_params = []
+            for model in population.models:
+                params = torch.cat([p.flatten() for p in model.parameters()]).detach().numpy()
+                all_params.append(params)
+            all_params = np.array(all_params)
+            diversity = np.mean(np.std(all_params, axis=0))
+
             logging.info(
-                f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.pth)"
+                f"Gen {gen:3d} | Best: {best_fit:7.2f} | Avg: {avg_fit:7.2f} | Worst: {worst_fit:7.2f} | Div: {diversity:.4f}"
             )
 
-        # Save top 5 of the current generation for rendering
-        sorted_indices = np.argsort(population.fitnesses)[::-1]
-        for idx_rank in range(min(5, len(population.models))):
-            torch.save(
-                population.models[sorted_indices[idx_rank]].state_dict(),
-                os.path.join("models", f"top_{idx_rank}.pth"),
-            )
+            with open(history_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow([gen, best_fit, avg_fit, worst_fit, diversity])
 
-        fitnesses = np.array(population.fitnesses)
-        best_fit = np.max(fitnesses)
-        avg_fit = np.mean(fitnesses)
-        worst_fit = np.min(fitnesses)
-
-        all_params = []
-        for model in population.models:
-            params = torch.cat([p.flatten() for p in model.parameters()]).detach().numpy()
-            all_params.append(params)
-        all_params = np.array(all_params)
-        diversity = np.mean(np.std(all_params, axis=0))
-
-        logging.info(
-            f"Gen {gen:3d} | Best: {best_fit:7.2f} | Avg: {avg_fit:7.2f} | Worst: {worst_fit:7.2f} | Div: {diversity:.4f}"
-        )
-
-        with open(history_path, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([gen, best_fit, avg_fit, worst_fit, diversity])
-
-        population.evolve()
+            population.evolve()
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
 
     logging.info(
         f"Training complete. Session best: models/best_model.pth | Universal best: models/universal_best.pth ({universal_best_fitness:.2f})"
@@ -188,8 +196,12 @@ def render(render_universal=False):
                 path = None
 
         if path and os.path.exists(path):
-            models[i].load_state_dict(torch.load(path, weights_only=True))
-            models[i].eval()
+            try:
+                models[i].load_state_dict(torch.load(path, weights_only=True))
+                models[i].eval()
+            except Exception as e:
+                logging.warning(f"Could not load {path}: {e}")
+
 
     running = True
 
@@ -277,6 +289,7 @@ def main():
     parser.add_argument("--pop", type=int, default=50, help="Population size")
     parser.add_argument("--mutation-rate", type=float, default=0.15, help="Mutation rate for GA weights")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
+    parser.add_argument("--workers", type=int, default=None, help="Number of parallel worker processes for training rollouts")
     parser.add_argument(
         "--fitness-mode",
         type=str,
@@ -292,7 +305,7 @@ def main():
         random.seed(args.seed)
 
     if args.train:
-        train(args.gens, args.pop, args.fitness_mode, args.mutation_rate)
+        train(args.gens, args.pop, args.fitness_mode, args.mutation_rate, args.workers)
     elif args.render or args.universal:
         render(render_universal=args.universal)
     else:
