@@ -127,12 +127,11 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             avg_fit = np.mean(fitnesses)
             worst_fit = np.min(fitnesses)
 
-            all_params = []
-            for model in population.models:
-                params = torch.cat([p.flatten() for p in model.parameters()]).detach().numpy()
-                all_params.append(params)
-            all_params = np.array(all_params)
-            diversity = np.mean(np.std(all_params, axis=0))
+            with torch.no_grad():
+                param_matrix = torch.stack([
+                    torch.cat([p.view(-1) for p in m.parameters()]) for m in population.models
+                ])
+                diversity = float(torch.std(param_matrix, dim=0).mean().item())
 
             logging.info(
                 f"Gen {gen:3d} | Best: {best_fit:7.2f} | Avg: {avg_fit:7.2f} | Worst: {worst_fit:7.2f} | Div: {diversity:.4f}"

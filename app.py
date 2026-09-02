@@ -1,5 +1,6 @@
 import csv
 import json
+import multiprocessing
 import os
 import threading
 import time
@@ -61,81 +62,88 @@ def run_training_loop():
             mutation_rate=training_state["mutation_rate"],
         )
 
-        for gen in range(training_state["total_generations"]):
-            while training_state["paused"] and training_state["is_training"]:
-                time.sleep(0.5)
+        workers = int(training_state.get("workers", 4))
+        pool = multiprocessing.Pool(processes=workers) if workers > 1 else None
 
-            if not training_state["is_training"]:
-                break
+        try:
+            for gen in range(training_state["total_generations"]):
+                while training_state["paused"] and training_state["is_training"]:
+                    time.sleep(0.5)
 
-            training_state["current_generation"] = gen + 1
-            pop.mutation_rate = training_state["mutation_rate"]
+                if not training_state["is_training"]:
+                    break
 
-            # Evaluate population
-            pop.evaluate(fitness_mode=training_state["fitness_mode"])
+                training_state["current_generation"] = gen + 1
+                pop.mutation_rate = training_state["mutation_rate"]
 
-            gen_best_fitness = max(pop.fitnesses)
-            gen_best_idx = pop.fitnesses.index(gen_best_fitness)
-            avg_fit = float(np.mean(pop.fitnesses))
-            worst_fit = float(np.min(pop.fitnesses))
+                # Evaluate population across pool
+                pop.evaluate(fitness_mode=training_state["fitness_mode"], pool=pool)
 
-            all_params = []
-            for model in pop.models:
-                params = torch.cat([p.flatten() for p in model.parameters()]).detach().numpy()
-                all_params.append(params)
-            diversity = float(np.mean(np.std(np.array(all_params), axis=0)))
+                gen_best_fitness = max(pop.fitnesses)
+                gen_best_idx = pop.fitnesses.index(gen_best_fitness)
+                avg_fit = float(np.mean(pop.fitnesses))
+                worst_fit = float(np.min(pop.fitnesses))
 
-            training_state["best_fitness"] = float(gen_best_fitness)
-            training_state["avg_fitness"] = avg_fit
-            training_state["diversity_score"] = diversity
+                with torch.no_grad():
+                    param_matrix = torch.stack([
+                        torch.cat([p.view(-1) for p in m.parameters()]) for m in pop.models
+                    ])
+                    diversity = float(torch.std(param_matrix, dim=0).mean().item())
 
-            # Save session best
-            atomic_torch_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.pth"))
+                training_state["best_fitness"] = float(gen_best_fitness)
+                training_state["avg_fitness"] = avg_fit
+                training_state["diversity_score"] = diversity
 
-            # Save top 5
-            sorted_indices = np.argsort(pop.fitnesses)[::-1]
-            for idx_rank in range(min(5, len(pop.models))):
-                atomic_torch_save(
-                    pop.models[sorted_indices[idx_rank]].state_dict(),
-                    os.path.join("models", f"top_{idx_rank}.pth"),
-                )
+                # Save session best
+                atomic_torch_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.pth"))
 
-            # Universal record update
-            meta_path = os.path.join("models", "universal_best_meta.json")
-            universal_best_path = os.path.join("models", "universal_best.pth")
-            current_univ = -float("inf")
-            if os.path.exists(meta_path):
-                try:
-                    with open(meta_path, "r", encoding="utf-8") as f:
-                        current_univ = float(json.load(f).get("best_fitness", -float("inf")))
-                except Exception:
-                    pass
-
-            if gen_best_fitness > current_univ:
-                atomic_torch_save(pop.models[gen_best_idx].state_dict(), universal_best_path)
-                tmp_meta = meta_path + ".tmp"
-                with open(tmp_meta, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "best_fitness": float(gen_best_fitness),
-                            "generation": int(gen + 1),
-                            "fitness_mode": training_state["fitness_mode"],
-                            "pop_size": training_state["population_size"],
-                            "mutation_rate": training_state["mutation_rate"],
-                            "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                        },
-                        f,
-                        indent=2,
+                # Save top 5
+                sorted_indices = np.argsort(pop.fitnesses)[::-1]
+                for idx_rank in range(min(5, len(pop.models))):
+                    atomic_torch_save(
+                        pop.models[sorted_indices[idx_rank]].state_dict(),
+                        os.path.join("models", f"top_{idx_rank}.pth"),
                     )
-                os.replace(tmp_meta, meta_path)
 
+                # Universal record update
+                meta_path = os.path.join("models", "universal_best_meta.json")
+                universal_best_path = os.path.join("models", "universal_best.pth")
+                current_univ = -float("inf")
+                if os.path.exists(meta_path):
+                    try:
+                        with open(meta_path, "r", encoding="utf-8") as f:
+                            current_univ = float(json.load(f).get("best_fitness", -float("inf")))
+                    except Exception:
+                        pass
 
-            with open(history_path, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow([gen + 1, round(gen_best_fitness, 2), round(avg_fit, 2), round(worst_fit, 2), round(diversity, 4)])
+                if gen_best_fitness > current_univ:
+                    atomic_torch_save(pop.models[gen_best_idx].state_dict(), universal_best_path)
+                    tmp_meta = meta_path + ".tmp"
+                    with open(tmp_meta, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {
+                                "best_fitness": float(gen_best_fitness),
+                                "generation": int(gen + 1),
+                                "fitness_mode": training_state["fitness_mode"],
+                                "pop_size": training_state["population_size"],
+                                "mutation_rate": training_state["mutation_rate"],
+                                "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            },
+                            f,
+                            indent=2,
+                        )
+                    os.replace(tmp_meta, meta_path)
 
-            pop.evolve()
-            time.sleep(0.01)
+                with open(history_path, "a", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow([gen + 1, round(gen_best_fitness, 2), round(avg_fit, 2), round(worst_fit, 2), round(diversity, 4)])
+
+                pop.evolve()
+                time.sleep(0.01)
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
 
     except Exception as e:
         training_state["error"] = str(e)

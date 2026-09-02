@@ -1,6 +1,6 @@
 ---
 name: Evolution-1
-last_updated: 2026-09-01
+last_updated: 2026-09-02
 ---
 
 # Evolution-1 Strategy
@@ -20,6 +20,7 @@ A lightweight, zero-bloat 2D physics evolutionary laboratory combining Central P
 ## Boundaries
 
 - No heavy, slow deep RL training frameworks (e.g. PyTorch RL / Ray / Stable-Baselines) when lightweight genetic algorithms and CPGs solve the gait efficiently.
+- No AI-slop anti-patterns (redundant type casting, `copy.deepcopy` on neural models, scalar NumPy trig inside high-frequency physics steps). Core simulation enforces zero-allocation loops and closed-form math.
 - No generic AI-slop UI aesthetics (glowing purple gradients, aurora blobs, blurred drop-shadow cards). Interface remains industrial, high-contrast, brutalist, and data-dense.
 
 _Resist a change when:_ It adds complex black-box abstractions or slows down rollout throughput for negligible gait improvement.

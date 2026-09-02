@@ -1,25 +1,23 @@
-import copy
 import random
 
 import numpy as np
 import torch
 
+# pyrefly: ignore [missing-import]
 from src.environment import CreatureEnv
+# pyrefly: ignore [missing-import]
 from src.model import CreatureBrain
-
 
 def evaluate_genome(args):
     """
-    Top-level picklable rollout worker function for multi-core multiprocessing.
+    Picklable rollout worker function for multi-core multiprocessing.
     args: tuple of (state_dict, fitness_mode, max_steps)
     returns: tuple of (total_reward, distance, fallen, steps)
     """
     state_dict, fitness_mode, max_steps = args
-
     brain = CreatureBrain()
     brain.load_state_dict(state_dict)
     brain.eval()
-
     env = CreatureEnv(fitness_mode=fitness_mode)
     state = env.reset()
     total_reward = 0.0
@@ -48,10 +46,12 @@ class Population:
         self.models = [model_class() for _ in range(pop_size)]
         self.fitnesses = [0.0] * pop_size
 
+    def clone_model(self, source):
+        child = self.model_class()
+        child.load_state_dict({k: v.clone() for k, v in source.state_dict().items()})
+        return child
+
     def evaluate(self, fitness_mode="baseline", max_steps=600, pool=None):
-        """
-        Evaluate all models in the population, optionally across a multiprocessing Pool.
-        """
         tasks = [(m.state_dict(), fitness_mode, max_steps) for m in self.models]
         if pool is not None:
             results = pool.map(evaluate_genome, tasks)
@@ -62,7 +62,7 @@ class Population:
         return results
 
     def mutate(self, model, in_place=False):
-        child = model if in_place else copy.deepcopy(model)
+        child = model if in_place else self.clone_model(model)
         with torch.no_grad():
             for param in child.parameters():
                 mutation_mask = (torch.rand_like(param) < self.mutation_rate).float()
@@ -71,34 +71,27 @@ class Population:
         return child
 
     def crossover(self, parent1, parent2):
-        child = copy.deepcopy(parent1)
+        child = self.clone_model(parent1)
         with torch.no_grad():
-            for p_child, p1, p2 in zip(
-                child.parameters(), parent1.parameters(), parent2.parameters()
-            ):
-                # Uniform crossover
-                mask = (torch.rand_like(p1) < 0.5).float()
-                p_child.copy_(mask * p1 + (1 - mask) * p2)
+            for p_child, p2 in zip(child.parameters(), parent2.parameters()):
+                mask = torch.rand_like(p_child) < 0.5
+                p_child.data.copy_(torch.where(mask, p_child.data, p2.data))
         return child
 
     def evolve(self):
-        # Sort by fitness descending
         sorted_indices = np.argsort(self.fitnesses)[::-1]
         elite_count = min(5, self.pop_size)
-        elites = [self.models[i] for i in sorted_indices[:elite_count]]  # Keep top-N elites
+        elites = [self.models[i] for i in sorted_indices[:elite_count]]
 
-        new_models = [copy.deepcopy(m) for m in elites]
+        new_models = [self.clone_model(m) for m in elites]
 
-        # Fill the rest
         while len(new_models) < self.pop_size:
             if random.random() < 0.15:
-                # 15% purely mutate elites
                 parent = random.choice(elites)
                 new_models.append(self.mutate(parent))
             else:
-                # 85% crossover then mutate in-place on the fresh child
                 if len(elites) >= 2:
-                    parent1, parent2 = random.sample(elites, 2)  # No replacement — always distinct
+                    parent1, parent2 = random.sample(elites, 2)
                 else:
                     parent1 = parent2 = elites[0]
                 child = self.crossover(parent1, parent2)
