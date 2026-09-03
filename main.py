@@ -15,45 +15,15 @@ import torch
 from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
+from src.utils import (
+    UNIVERSAL_BEST_PATH,
+    UNIVERSAL_META_PATH,
+    atomic_torch_save,
+    load_universal_best_meta,
+    save_universal_best,
+)
 
 import multiprocessing
-
-UNIVERSAL_BEST_PATH = os.path.join("models", "universal_best.pth")
-UNIVERSAL_META_PATH = os.path.join("models", "universal_best_meta.json")
-
-
-def load_universal_best_meta():
-    if os.path.exists(UNIVERSAL_META_PATH):
-        try:
-            with open(UNIVERSAL_META_PATH, "r") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-
-def atomic_torch_save(obj, path):
-    """Save PyTorch tensor or state_dict atomically to avoid partial reads."""
-    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
-    tmp_path = path + ".tmp"
-    torch.save(obj, tmp_path)
-    os.replace(tmp_path, path)
-
-
-def save_universal_best(model, fitness, generation, fitness_mode, pop_size, mutation_rate):
-    atomic_torch_save(model.state_dict(), UNIVERSAL_BEST_PATH)
-    meta = {
-        "best_fitness": float(fitness),
-        "generation": int(generation),
-        "fitness_mode": str(fitness_mode),
-        "pop_size": int(pop_size),
-        "mutation_rate": float(mutation_rate),
-        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-    }
-    tmp_meta = UNIVERSAL_META_PATH + ".tmp"
-    with open(tmp_meta, "w") as f:
-        json.dump(meta, f, indent=2)
-    os.replace(tmp_meta, UNIVERSAL_META_PATH)
 
 
 

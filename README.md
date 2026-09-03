@@ -48,7 +48,16 @@ python main.py --train --gens 100 --pop 50 --workers 4
 python main.py --render
 ```
 
-### 3. Docker Deployment
+### 3. Analytics & Progress Visualization
+```bash
+# Plot latest training run metrics (generates PNG & HTML dashboard)
+python scripts/plot_logs.py
+
+# Live monitor an active training run
+python scripts/plot_logs.py --live
+```
+
+### 4. Docker Deployment
 ```bash
 docker compose up --build
 ```

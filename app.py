@@ -12,6 +12,7 @@ import torch
 from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
+from src.utils import atomic_torch_save, load_universal_best_meta, save_universal_best
 
 app = Flask(__name__)
 
@@ -32,14 +33,6 @@ training_state = {
     "error": None,
 }
 training_thread = None
-
-
-def atomic_torch_save(obj, path):
-    """Save PyTorch tensor or state_dict atomically to avoid partial reads."""
-    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
-    tmp_path = path + ".tmp"
-    torch.save(obj, tmp_path)
-    os.replace(tmp_path, path)
 
 
 def run_training_loop():
@@ -106,33 +99,16 @@ def run_training_loop():
                     )
 
                 # Universal record update
-                meta_path = os.path.join("models", "universal_best_meta.json")
-                universal_best_path = os.path.join("models", "universal_best.pth")
-                current_univ = -float("inf")
-                if os.path.exists(meta_path):
-                    try:
-                        with open(meta_path, "r", encoding="utf-8") as f:
-                            current_univ = float(json.load(f).get("best_fitness", -float("inf")))
-                    except Exception:
-                        pass
-
+                current_univ = float(load_universal_best_meta().get("best_fitness", -float("inf")))
                 if gen_best_fitness > current_univ:
-                    atomic_torch_save(pop.models[gen_best_idx].state_dict(), universal_best_path)
-                    tmp_meta = meta_path + ".tmp"
-                    with open(tmp_meta, "w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "best_fitness": float(gen_best_fitness),
-                                "generation": int(gen + 1),
-                                "fitness_mode": training_state["fitness_mode"],
-                                "pop_size": training_state["population_size"],
-                                "mutation_rate": training_state["mutation_rate"],
-                                "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                            },
-                            f,
-                            indent=2,
-                        )
-                    os.replace(tmp_meta, meta_path)
+                    save_universal_best(
+                        model=pop.models[gen_best_idx],
+                        fitness=gen_best_fitness,
+                        generation=gen + 1,
+                        fitness_mode=training_state["fitness_mode"],
+                        pop_size=training_state["population_size"],
+                        mutation_rate=training_state["mutation_rate"],
+                    )
 
                 with open(history_path, "a", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
@@ -184,14 +160,8 @@ def get_history():
 
 @app.route("/api/best")
 def get_best():
-    meta_file = os.path.join("models", "universal_best_meta.json")
-    if not os.path.exists(meta_file):
-        return jsonify({})
-
     try:
-        with open(meta_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return jsonify(data)
+        return jsonify(load_universal_best_meta())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

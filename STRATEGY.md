@@ -36,9 +36,11 @@ _Resist a change when:_ It adds complex black-box abstractions or slows down rol
 
 ### Locomotion & Morphology Pipeline
 
-Evolving physics agents from basic quadruped forward walking (v1-v2) to procedural obstacle navigation (v3), balanced horse-and-rider morphologies (v4), and spear-wielding vision agents (v5).
+- **v1-v2 (Completed):** 2D Pymunk quadruped physics, CPG rhythm coordination, multi-core GA rollout optimization, and live SSE browser canvas streaming.
+- **v3 (Active Focus):** Procedural undulating terrain — continuous, smoothly linked physics segments with progressive difficulty scaling (hills become steeper as distance $x$ increases), zero static obstacles.
+- **v4-v6 (Planned):** Horse and rider morphology adaptation (v4), vision & sensory integration (v5), and multi-agent competitive battle arenas (v6).
 
-_Why it serves the approach:_ Progressively increases behavioral and mechanical complexity on a verified physics baseline.
+_Why it serves the approach:_ Progressively increases behavioral and physical adaptation challenges without adding heavyweight RL frameworks.
 
 ### High-Throughput Evolutionary Engine
 

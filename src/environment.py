@@ -7,8 +7,6 @@ CPG_CLOCK = tuple(
     (math.sin(2.0 * math.pi * i / 30.0), math.cos(2.0 * math.pi * i / 30.0))
     for i in range(30)
 )
-
-
 class CreatureEnv:
     def __init__(self, fitness_mode="baseline"):
         self.fitness_mode = fitness_mode
@@ -20,9 +18,10 @@ class CreatureEnv:
 
     def create_ground(self):
         body = self.space.static_body
-        self.ground_shape = pymunk.Segment(body, (-10000, 500), (10000, 500), 5.0)  
-        self.ground_shape.friction = 1.0
+        self.ground_shape = pymunk.Segment(body, (-10000, 500), (2000, 500), 5.0)  
+        self.ground_shape.friction = 1.2
         self.space.add(self.ground_shape)
+        self.terrain_changing()
 
     def create_creature(self):
         mass = 10
@@ -93,13 +92,13 @@ class CreatureEnv:
             motor.rate = float(action) * 10.0
 
         old_x = self.torso.position.x
-        self.space.step(1 / 60.0)
+        self.space.step(3 / 60.0)
         self.steps += 1
         state = self.get_state()
         displacement = self.torso.position.x - old_x
-        reward = displacement
-        leg_motion = sum(abs(leg.angular_velocity) for leg in self.legs)
-        reward += leg_motion * 0.005
+        reward = displacement * 2
+        # leg_motion = sum(abs(leg.angular_velocity) for leg in self.legs)
+        # reward += leg_motion * 0.0005
         torso_angle = self.torso.angle
         torso_bottom = self.torso.position.y + 30.0 * abs(math.sin(torso_angle)) + 10.0 * abs(math.cos(torso_angle))
         body_touched_ground = torso_bottom >= 495.0
@@ -179,4 +178,27 @@ class CreatureEnv:
             "velocity_x": float(self.torso.velocity.x),
             "angle": float(self.torso.angle),
         }
+    def terrain_changing(self):
+        #*ok so firstly the ground is NOT super flat but kinda
+        # and then it will chanage like the more far we go the harder it is
+        # the body spawns at 400 so we need to add the uneven grounds 
+        # after the 600 and then we can do soo
+        # no obstacles btw
+       start_x = 600
+       end_x = 1000
+       step_size = 15
+        
+       for x in np.arange(start_x, end_x, step_size):
+            progress = (x - 600) * 0.02
+            hill_height = min(40.0 , 10.0 + progress )
 
+            y1 = abs(500 - math.sin(x * 0.1) * hill_height)
+            y2 = abs(500 - math.sin((x + step_size) * 0.1) * hill_height)
+            segment = pymunk.Segment(
+                self.space.static_body,
+                (x, y1),
+                (x + step_size, y2),
+                2.0
+            )
+            segment.friction = 1.6
+            self.space.add(segment)

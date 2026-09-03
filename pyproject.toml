@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evolution-simulation"
-version = "0.1.0"
-description = "A simulation for evolving creature locomotion using PyTorch and Pymunk."
+version = "0.2.0"
+description = "A lightweight 2D physics evolutionary laboratory combining genetic algorithms, CPG rhythms, and real-time browser telemetry."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -13,6 +13,9 @@ dependencies = [
     "pymunk>=6.0.0",
     "pygame>=2.5.0",
     "numpy>=1.24.0",
+    "flask>=3.0.0",
+    "gunicorn>=21.2.0",
+    "matplotlib>=3.7.0",
 ]
 
 [project.optional-dependencies]
@@ -24,9 +27,12 @@ dev = [
 [project.scripts]
 evolution-train = "main:main"
 
+[tool.setuptools]
+py-modules = ["app", "main", "plot_logs"]
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src*", "scripts*"]
 
 [tool.ruff]
 line-length = 100
@@ -40,4 +46,3 @@ ignore = ["E501"]
 testpaths = ["tests"]
 pythonpath = ["."]
 norecursedirs = ["spinningup"]
-
