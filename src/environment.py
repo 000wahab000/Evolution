@@ -2,7 +2,6 @@ import math
 import numpy as np
 import pymunk
 
-# Precomputed 30-step rhythmic CPG phase clock lookup table
 CPG_CLOCK = tuple(
     (math.sin(2.0 * math.pi * i / 30.0), math.cos(2.0 * math.pi * i / 30.0))
     for i in range(30)
@@ -18,7 +17,7 @@ class CreatureEnv:
 
     def create_ground(self):
         body = self.space.static_body
-        self.ground_shape = pymunk.Segment(body, (-10000, 500), (2000, 500), 5.0)  
+        self.ground_shape = pymunk.Segment(body, (-10000, 500), (3000, 500), 5.0)  
         self.ground_shape.friction = 1.2
         self.space.add(self.ground_shape)
         self.terrain_changing()
@@ -98,35 +97,28 @@ class CreatureEnv:
         displacement = self.torso.position.x - old_x
         reward = displacement * 2
         # leg_motion = sum(abs(leg.angular_velocity) for leg in self.legs)
-        # reward += leg_motion * 0.0005
+        # reward += leg_motion * 0.0005 #(dont remove the bum ahh ## please )
         torso_angle = self.torso.angle
         torso_bottom = self.torso.position.y + 30.0 * abs(math.sin(torso_angle)) + 10.0 * abs(math.cos(torso_angle))
         body_touched_ground = torso_bottom >= 495.0
-
         if self.fitness_mode in ["tilt_penalized", "all_penalties"]:
             reward -= 20 * abs(torso_angle) / 60.0
-
         if self.fitness_mode in ["energy_penalized", "all_penalties"]:
             energy_cost = sum(abs(float(a)) for a in actions)
             reward -= energy_cost * 0.05 / 60.0
-
         if self.fitness_mode in ["ground_termination", "touch_ground"] and body_touched_ground:
             reward -= 100.0
-
         if abs(self.torso.velocity.x) < 2.0 and self.steps > 45:
             self.still_steps += 1
             reward -= 0.1
         else:
             self.still_steps = 0
-
         if self.fitness_mode in ["ground_termination", "touch_ground"]:
             fallen = body_touched_ground or abs(torso_angle) > 1.2 or self.torso.position.y > 520
         else:
             fallen = abs(torso_angle) > 1.2 or self.torso.position.y > 520 or body_touched_ground
-
         stuck = self.still_steps > 60
         done = self.steps > 600 or fallen or stuck
-
         return state, reward, done, fallen
 
     def get_state(self):
@@ -184,21 +176,36 @@ class CreatureEnv:
         # the body spawns at 400 so we need to add the uneven grounds 
         # after the 600 and then we can do soo
         # no obstacles btw
-       start_x = 600
-       end_x = 1000
-       step_size = 15
-        
-       for x in np.arange(start_x, end_x, step_size):
-            progress = (x - 600) * 0.02
-            hill_height = min(40.0 , 10.0 + progress )
+        start_x = 600
+        end_x = 1600
+        y = 500
+        friction = 1.8
+        equation1 = 500 
+        equation2 = 500 - (end_x - start_x ) / 25
+        # the up hill 
+        self.ground_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+        self.ground_shape = pymunk.Segment(
+            self.ground_body,
+            (start_x, equation1),
+            (end_x, equation2),
+            4
+        )
+        self.ground_shape.friction = friction
+        self.space.add(self.ground_body, self.ground_shape)
 
-            y1 = abs(500 - math.sin(x * 0.1) * hill_height)
-            y2 = abs(500 - math.sin((x + step_size) * 0.1) * hill_height)
-            segment = pymunk.Segment(
-                self.space.static_body,
-                (x, y1),
-                (x + step_size, y2),
-                2.0
-            )
-            segment.friction = 1.6
-            self.space.add(segment)
+        # the downhill
+        start_x2 = 1600
+        end_x2 = 2600
+        y = 500
+        friction = 1.8
+        equation1 = 500 
+        equation2 = 500 - (end_x2 - start_x2 ) / 25
+        self.ground_body = pymunk.Body(body_type=pymunk.Body.STATIC)
+        self.ground_shape = pymunk.Segment(
+            self.ground_body,
+            (start_x2, equation1),
+            (end_x2, equation2),
+            4
+        )
+        self.ground_shape.friction = friction
+        self.space.add(self.ground_body, self.ground_shape)
