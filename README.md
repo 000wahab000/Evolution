@@ -1,64 +1,168 @@
-# Evolution
+# Evolution-1
 
-A project for me to explore how Artificial life work in a predefined system and also be able to check out what does evolution mean
+A 2D physics lab where creatures learn to walk through evolution, not backprop.
 
-so what i have achiveed in here is that i am using pychunk to stimulate the body its just a dog at the moment with 4 legs u already know
-with reward and finess scores since thats what its job is
+No reinforcement learning frameworks. No PyTorch Lightning. No 40-package dependency hell. Just a genetic algorithm, a tiny neural net, and Pymunk doing all the heavy lifting.
 
-the brain part is just a small Neutral Network with very less paramters like 256
-and then its algorithm currently i just the best ones
-right now it takes 5 best ones and then crossovers 30 % so that it can take a new and differnet steps and mutation is 70%
+![Quadruped walking demo](assets/walking%20body.gif)
 
-if u wanna run it
-do
+---
+
+## What this actually is
+
+A quadruped creature (torso + 4 legs, all Pymunk rigid bodies) gets a small neural network brain - 15 inputs, one hidden layer of 16 neurons, 4 motor outputs. That's ~256 parameters total. No gradients. No loss functions.
+
+Each generation, the top 5 performers survive. The rest of the population is bred from crossovers between survivors, then mutated. Repeat. After enough generations the creature figures out how to walk forward without falling over - entirely from scratch, with no demonstration data.
+
+The training signal is dead simple: **go right, don't fall**.
+
+### How the state space works
+
+The 15 network inputs at each timestep:
+
+| Input | What it is |
+| --- | --- |
+| `torso_angle` | Body tilt |
+| `torso_angular_velocity` | How fast it's rotating |
+| `torso_velocity_x/y` | Forward/vertical speed |
+| `torso_height` | How far off the ground |
+| `leg[0..3].angle` | Each leg's angle relative to torso |
+| `leg[0..3].angular_velocity` | Each leg's rotation speed |
+| `cpg_sin, cpg_cos` | Central Pattern Generator clock (30-step rhythm signal) |
+
+The CPG is a precomputed sine/cosine table that gives the network a sense of rhythmic timing - it can phase-lock its gait to it. Without it, the creature tends to spam all motors at max speed and goes nowhere.
+
+### Evolution loop
+
+```
+evaluate all N genomes (parallel, one rollout per core)
+    ↓
+rank by cumulative reward
+    ↓
+keep top 5 (elite carry-through)
+    ↓
+fill population:
+  15% chance  → mutate one elite
+  85% chance  → crossover two elites, then mutate result
+    ↓
+repeat
+```
+
+Mutation: per-parameter random mask (rate 0.15) with Gaussian noise (scale 0.35). Crossover: uniform parameter-level mixing (50/50 per weight from each parent).
+
+---
+
+## The terrain
+
+Flat ground from spawn to x=600. Then:
+- **Uphill** from x=600 to x=1600 (40px rise over 1000px)
+- **Downhill** from x=1600 to x=2600 (40px drop over 1000px)
+
+Goal is x=4000. The creature has to actually learn to handle slope changes, not just walk on flat ground.
+
+---
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+```
+
+**Run the best saved model:**
+```bash
 python main.py --render
-it will run the best ones
-and yeah no AI slpp btw this si what the project is about am also adding a video or gif to show you
-8/26/2026
+```
 
-![Evolution-1 walking demo](assets/walking%20body.gif)
+**Train from scratch:**
+```bash
+python main.py --train --gens 100 --pop 50 --workers 4
+```
 
-## 🗺️ Project Roadmap
-
-- **✅ v1 — Straight-Line Walking (Achieved):** 2D Pymunk quadruped physics, CPG rhythm inputs, fall termination penalty, and idle reward fix to prevent reward hacking.
-- **✅ v2 — Multi-Core Optimization & Web Deployment (Achieved):**
-  - **Multi-Core Training:** Parallel rollout evaluation with Python multiprocessing (`--workers N`), accelerating training by 4x-8x.
-  - **Live Web Dashboard:** Real-time 60 FPS HTML5 Canvas creature animation streaming over Server-Sent Events (SSE).
-  - **Interactive Controls:** Start/pause evolution, tune mutation rates and population sizes dynamically from the web interface.
-  - **Zero-Config Docker:** One-command deployment via `docker compose up` with volume persistence.
-- **⏳ v3 — Procedural Terrain & Obstacles:** Randomly generated hills, slopes, curves, gap jumps, and spike hazards.
-- **⏳ v4 — Horse Morphology & Rider:** Evolving body structure into a horse with a balanced human rider on top.
-- **⏳ v5 — Weaponry & Vision:** Equipping the human rider with a spear and directional vision sensors.
-- **⏳ v6 — Multi-Agent Battle Arena:** Multi-creature tournament battles with combat physics and competitive evolution.
-
-## 🚀 Quick Start (v2)
-
-### 1. Interactive Web Dashboard
+**Live web dashboard** (60fps canvas, SSE stream, start/pause/tune from browser):
 ```bash
 python app.py
-```
-Open `http://localhost:8000` in your browser to view the live physics canvas, live convergence curves, and start/pause evolutionary training runs with one click!
-
-### 2. Multi-Core CLI Training
-```bash
-# Train for 100 generations across 4 parallel CPU workers
-python main.py --train --gens 100 --pop 50 --workers 4
-
-# Render the best evolved model in PyGame
-python main.py --render
+# open http://localhost:8000
 ```
 
-### 3. Analytics & Progress Visualization
+**Plot training history:**
 ```bash
-# Plot latest training run metrics (generates PNG & HTML dashboard)
 python scripts/plot_logs.py
-
-# Live monitor an active training run
-python scripts/plot_logs.py --live
+python scripts/plot_logs.py --live  # tails an active run
 ```
 
-### 4. Docker Deployment
+**Docker:**
 ```bash
 docker compose up --build
 ```
+
+---
+
+## Stack
+
+| Piece | Why |
+| --- | --- |
+| **Pymunk** | 2D rigid body physics - fast, no GPU needed |
+| **PyTorch** | Neural net weights + crossover/mutation ops |
+| **Flask + SSE** | Real-time browser streaming without WebSockets |
+| **Python multiprocessing** | Parallel rollout evaluation across CPU cores |
+| **Matplotlib** | Training curve visualization |
+
+No Ray. No Stable-Baselines. No CUDA required.
+
+---
+
+## Fitness modes
+
+The `--fitness-mode` flag changes what penalties get applied during rollout:
+
+| Mode | What it does |
+| --- | --- |
+| `baseline` | Reward = forward displacement only |
+| `tilt_penalized` | Also penalizes body angle deviation |
+| `energy_penalized` | Also penalizes total motor effort |
+| `ground_termination` | Episode ends immediately on torso contact |
+| `all_penalties` | Tilt + energy penalties combined |
+
+---
+
+## Project layout
+
+```
+src/
+  environment.py   - Pymunk physics world, creature construction, reward logic
+  evolution.py     - Population class, crossover, mutation, rollout dispatch
+  model.py         - CreatureBrain (15→16→4 tanh network)
+models/            - Saved checkpoints (best_model.pth, top_0..4.pth)
+logs/              - Training history CSVs and evolution.log
+templates/         - Flask HTML templates for the web dashboard
+scripts/           - plot_logs.py, other utilities
+tests/             - pytest suite
+```
+
+---
+
+## Roadmap
+
+| Version | Status | What |
+| --- | --- | --- |
+| v1 - Straight-line walking | Done | Pymunk physics, CPG timing, GA baseline |
+| v2 - Multi-core + web dashboard | Done | Parallel rollouts, SSE browser streaming, Docker |
+| v3 - Procedural terrain | In progress | Continuously linked slope segments with progressive difficulty |
+| v4 - Horse + rider | Planned | Extended morphology, rider balance constraints |
+| v5 - Vision | Planned | Directional sensors for the rider |
+| v6 - Multi-agent battles | Planned | Competitive co-evolution, combat physics |
+
+---
+
+## Why not just use RL?
+
+Standard RL (PPO, SAC, etc.) works but it's overkill for this problem and hides what's actually happening. With a genetic algorithm you can watch the exact population structure evolve, inspect individual genomes, and run the whole thing on laptop CPUs with no framework overhead.
+
+The network is deliberately tiny (~256 params). It's enough to solve the gait. Adding layers right now would just slow down the evolutionary search without making the walking better - the bottleneck is the fitness landscape, not model capacity.
+
+---
+
+## License
+
+MIT
 
