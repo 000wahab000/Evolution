@@ -1,6 +1,5 @@
 import multiprocessing
 import pytest
-import torch
 import numpy as np
 
 from src.evolution import Population, evaluate_genome
@@ -32,7 +31,6 @@ def test_population_parallel_evaluation():
 
 
 def test_parallel_vs_sequential_consistency():
-    torch.manual_seed(42)
     np.random.seed(42)
 
     pop = Population(CreatureBrain, pop_size=4)

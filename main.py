@@ -7,10 +7,6 @@ import random
 import time
 
 import numpy as np
-import pygame
-import pymunk
-import pymunk.pygame_util
-import torch
 
 from src.environment import CreatureEnv
 from src.evolution import Population
@@ -18,7 +14,8 @@ from src.model import CreatureBrain
 from src.utils import (
     UNIVERSAL_BEST_PATH,
     UNIVERSAL_META_PATH,
-    atomic_torch_save,
+    atomic_save,
+    load_state_dict_file,
     load_universal_best_meta,
     save_universal_best,
 )
@@ -67,7 +64,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             if gen_best_fitness > best_overall_fitness:
                 best_overall_fitness = gen_best_fitness
                 best_overall_model = population.models[gen_best_idx]
-                atomic_torch_save(best_overall_model.state_dict(), os.path.join("models", "best_model.pth"))
+                atomic_save(best_overall_model.state_dict(), os.path.join("models", "best_model.npz"))
 
             # Save universal all-time best
             if gen_best_fitness > universal_best_fitness:
@@ -81,15 +78,15 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
                     mutation_rate,
                 )
                 logging.info(
-                    f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.pth)"
+                    f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.npz)"
                 )
 
             # Save top 5 of the current generation for rendering
             sorted_indices = np.argsort(population.fitnesses)[::-1]
             for idx_rank in range(min(5, len(population.models))):
-                atomic_torch_save(
+                atomic_save(
                     population.models[sorted_indices[idx_rank]].state_dict(),
-                    os.path.join("models", f"top_{idx_rank}.pth"),
+                    os.path.join("models", f"top_{idx_rank}.npz"),
                 )
 
             fitnesses = np.array(population.fitnesses)
@@ -97,11 +94,8 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             avg_fit = np.mean(fitnesses)
             worst_fit = np.min(fitnesses)
 
-            with torch.no_grad():
-                param_matrix = torch.stack([
-                    torch.cat([p.view(-1) for p in m.parameters()]) for m in population.models
-                ])
-                diversity = float(torch.std(param_matrix, dim=0).mean().item())
+            param_matrix = np.stack([np.concatenate([p.ravel() for p in m.parameters()]) for m in population.models])
+            diversity = float(param_matrix.std(axis=0, ddof=1).mean())  # sample std keeps Diversity_Score comparable with older logs
 
             logging.info(
                 f"Gen {gen:3d} | Best: {best_fit:7.2f} | Avg: {avg_fit:7.2f} | Worst: {worst_fit:7.2f} | Div: {diversity:.4f}"
@@ -118,14 +112,18 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             pool.join()
 
     logging.info(
-        f"Training complete. Session best: models/best_model.pth | Universal best: models/universal_best.pth ({universal_best_fitness:.2f})"
+        f"Training complete. Session best: models/best_model.npz | Universal best: models/universal_best.npz ({universal_best_fitness:.2f})"
     )
 
 
 def render(render_universal=False):
+    # Viewer-only deps: imported here so `train` works on installs without pygame.
+    import pygame
+    import pymunk.pygame_util
+
     universal_path = UNIVERSAL_BEST_PATH
-    top_0_path = os.path.join("models", "top_0.pth")
-    best_path = os.path.join("models", "best_model.pth")
+    top_0_path = os.path.join("models", "top_0.npz")
+    best_path = os.path.join("models", "best_model.npz")
 
     if render_universal and os.path.exists(universal_path):
         logging.info("Rendering UNIVERSAL ALL-TIME BEST model...")
@@ -158,7 +156,7 @@ def render(render_universal=False):
         if render_universal and os.path.exists(universal_path):
             path = universal_path
         else:
-            m_top = os.path.join("models", f"top_{i}.pth")
+            m_top = os.path.join("models", f"top_{i}.npz")
             if os.path.exists(m_top):
                 path = m_top
             elif os.path.exists(best_path):
@@ -170,8 +168,7 @@ def render(render_universal=False):
 
         if path and os.path.exists(path):
             try:
-                models[i].load_state_dict(torch.load(path, weights_only=True))
-                models[i].eval()
+                models[i].load_state_dict(load_state_dict_file(path))
             except Exception as e:
                 logging.warning(f"Could not load {path}: {e}")
 
@@ -409,7 +406,6 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        torch.manual_seed(args.seed)
         np.random.seed(args.seed)
         random.seed(args.seed)
 

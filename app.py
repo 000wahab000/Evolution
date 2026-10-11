@@ -7,14 +7,15 @@ import time
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 import numpy as np
-import torch
 
 from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
-from src.utils import atomic_torch_save, load_universal_best_meta, save_universal_best
+from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
 
 app = Flask(__name__)
+# static/ holds the recorded replays (scripts/record_replay.py); short cache so a redeploy shows up quickly
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 300
 
 # Global Training State
 training_lock = threading.Lock()
@@ -28,7 +29,8 @@ training_state = {
     "population_size": 50,
     "mutation_rate": 0.15,
     "fitness_mode": "baseline",
-    "workers": 4,
+    "workers": int(os.environ.get("TRAINING_WORKERS", 4)),
+    "training_enabled": os.environ.get("TRAINING_ENABLED", "1") != "0",
     "paused": False,
     "error": None,
 }
@@ -77,25 +79,22 @@ def run_training_loop():
                 avg_fit = float(np.mean(pop.fitnesses))
                 worst_fit = float(np.min(pop.fitnesses))
 
-                with torch.no_grad():
-                    param_matrix = torch.stack([
-                        torch.cat([p.view(-1) for p in m.parameters()]) for m in pop.models
-                    ])
-                    diversity = float(torch.std(param_matrix, dim=0).mean().item())
+                param_matrix = np.stack([np.concatenate([p.ravel() for p in m.parameters()]) for m in pop.models])
+                diversity = float(param_matrix.std(axis=0, ddof=1).mean())  # sample std keeps Diversity_Score comparable with older logs
 
                 training_state["best_fitness"] = float(gen_best_fitness)
                 training_state["avg_fitness"] = avg_fit
                 training_state["diversity_score"] = diversity
 
                 # Save session best
-                atomic_torch_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.pth"))
+                atomic_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.npz"))
 
                 # Save top 5
                 sorted_indices = np.argsort(pop.fitnesses)[::-1]
                 for idx_rank in range(min(5, len(pop.models))):
-                    atomic_torch_save(
+                    atomic_save(
                         pop.models[sorted_indices[idx_rank]].state_dict(),
-                        os.path.join("models", f"top_{idx_rank}.pth"),
+                        os.path.join("models", f"top_{idx_rank}.npz"),
                     )
 
                 # Universal record update
@@ -168,6 +167,8 @@ def get_best():
 
 @app.route("/api/random")
 def get_random():
+    if not training_state["training_enabled"]:
+        return jsonify({"message": "Live simulation is disabled on this server"}), 403
     try:
         model = CreatureBrain()
         env = CreatureEnv(fitness_mode="baseline")
@@ -196,6 +197,8 @@ def get_training_status():
 @app.route("/api/training/start", methods=["POST"])
 def start_training():
     global training_thread, training_state
+    if not training_state["training_enabled"]:
+        return jsonify({"message": "Training is disabled on this server"}), 403
     if training_state["is_training"]:
         return jsonify({"message": "Training already in progress"}), 400
 
@@ -230,19 +233,21 @@ def stop_training():
 
 @app.route("/api/stream/sim")
 def stream_simulation():
+    # Each stream pins a gunicorn thread forever; the public demo plays recorded replays instead
+    if not training_state["training_enabled"]:
+        return jsonify({"message": "Live simulation is disabled on this server"}), 403
     model_type = request.args.get("model", "best")  # 'best', 'universal', 'top_0', 'random'
 
     def generate():
         brain = CreatureBrain()
-        if model_type == "universal" and os.path.exists(os.path.join("models", "universal_best.pth")):
-            brain.load_state_dict(torch.load(os.path.join("models", "universal_best.pth"), weights_only=True))
-        elif model_type == "best" and os.path.exists(os.path.join("models", "best_model.pth")):
-            brain.load_state_dict(torch.load(os.path.join("models", "best_model.pth"), weights_only=True))
+        if model_type == "universal" and os.path.exists(os.path.join("models", "universal_best.npz")):
+            brain.load_state_dict(load_state_dict_file(os.path.join("models", "universal_best.npz")))
+        elif model_type == "best" and os.path.exists(os.path.join("models", "best_model.npz")):
+            brain.load_state_dict(load_state_dict_file(os.path.join("models", "best_model.npz")))
         elif model_type.startswith("top_"):
-            top_path = os.path.join("models", f"{model_type}.pth")
+            top_path = os.path.join("models", f"{model_type}.npz")
             if os.path.exists(top_path):
-                brain.load_state_dict(torch.load(top_path, weights_only=True))
-        brain.eval()
+                brain.load_state_dict(load_state_dict_file(top_path))
 
         env = CreatureEnv(fitness_mode="baseline")
         state = env.reset()
@@ -279,11 +284,11 @@ def stream_simulation():
 @app.route("/api/models/download/<filename>")
 def download_model(filename):
     """Secure endpoint to download model checkpoints directly from browser."""
-    safe_names = ["universal_best.pth", "best_model.pth", "top_0.pth", "top_1.pth", "top_2.pth", "top_3.pth", "top_4.pth"]
+    safe_names = ["universal_best.npz", "best_model.npz", "top_0.npz", "top_1.npz", "top_2.npz", "top_3.npz", "top_4.npz"]
     if filename not in safe_names:
         return jsonify({"error": "Invalid model filename"}), 400
     models_dir = os.path.abspath("models")
-    return send_from_directory(models_dir, filename, as_attachment=True)
+    return send_from_directory(models_dir, filename, as_attachment=True, max_age=0)  # change during training
 
 
 @app.route("/api/logs/tail")

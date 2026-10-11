@@ -5,8 +5,7 @@ FROM python:${PYTHON_VERSION}-slim AS base
 
 # Prevents Python from writing pyc files and keeps stdout/stderr unbuffered.
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    SDL_VIDEODRIVER=dummy
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
@@ -14,10 +13,7 @@ WORKDIR /app
 ARG UID=10001
 RUN useradd -m -u "${UID}" -s /bin/bash appuser
 
-# Install CPU-only torch before installing other dependencies.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining dependencies using BuildKit pip cache.
+# Install dependencies using BuildKit pip cache.
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     pip install -r requirements.txt
@@ -34,5 +30,5 @@ USER appuser
 # Expose server port.
 EXPOSE 8000
 
-# Run with Gunicorn using threads for SSE streaming and disable unused control socket.
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "8", "--timeout", "120", "--no-control-socket"]
+# Run with Gunicorn on $PORT (Render sets it; defaults to 8000) using threads for SSE streaming and disable unused control socket.
+CMD ["sh", "-c", "exec gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 8 --timeout 120 --no-control-socket"]

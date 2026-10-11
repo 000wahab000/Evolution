@@ -14,14 +14,30 @@
       --bg: #09090b;
       --card-bg: #121214;
       --border: #27272a;
-      --border-light: #3f3f46;
+      --border-light: #71717a; /* 3:1 vs card/input bg so input boundaries are visible */
       --text-main: #fafafa;
-      --text-muted: #71717a;
+      --text-muted: #82828b; /* >= 4.5:1 on every panel background */
       --text-sub: #a1a1aa;
       --green: #22c55e;
       --yellow: #eab308;
-      --red: #ef4444;
+      --red: #dc2626; /* white label needs >= 4.5:1 */
       --blue: #3b82f6;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--yellow);
+      outline-offset: 2px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     body {
@@ -41,6 +57,8 @@
     /* Top Navigation Header */
     header {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
       justify-content: space-between;
       align-items: center;
       padding-bottom: 1.25rem;
@@ -145,6 +163,8 @@
 
     .panel-header {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 1rem;
@@ -172,11 +192,13 @@
       cursor: crosshair;
     }
 
-    canvas#simCanvas {
+    .viewport canvas {
       width: 100%;
       height: 100%;
       display: block;
     }
+
+    .viewport canvas[hidden] { display: none; }
 
     .viewport-hud {
       position: absolute;
@@ -254,6 +276,8 @@
 
     .viewport-footer {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       justify-content: space-between;
       align-items: center;
       margin-top: 0.75rem;
@@ -262,6 +286,7 @@
     /* Buttons & Model Selectors */
     .btn-group {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.35rem;
     }
 
@@ -331,8 +356,17 @@
       flex: 1;
     }
     .btn-action-stop:hover:not(:disabled) {
-      background: #dc2626;
-      border-color: #dc2626;
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+
+    .demo-note {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--yellow);
+      border-radius: 4px;
+      color: var(--yellow);
+      font-size: 0.75rem;
     }
 
     /* Controls Panel */
@@ -361,17 +395,12 @@
 
     .form-field input, .form-field select {
       background: #09090b;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-light);
       color: #ffffff;
       padding: 0.5rem 0.65rem;
       border-radius: 4px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.8rem;
-      outline: none;
-    }
-
-    .form-field input:focus, .form-field select:focus {
-      border-color: var(--border-light);
     }
 
     .form-field input[type="range"] {
@@ -399,6 +428,7 @@
     /* Tabbed Lower Section */
     .tabs-bar {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.5rem;
       border-bottom: 1px solid var(--border);
       margin-bottom: 1rem;
@@ -468,6 +498,23 @@
 
     .download-name { font-weight: 600; color: #ffffff; font-size: 0.8rem; }
     .download-desc { font-size: 0.7rem; color: var(--text-muted); }
+
+    /* Small screens + touch: 40px targets, no horizontal scroll */
+    @media (max-width: 600px), (pointer: coarse) {
+      .btn, .tab-btn, .form-field input, .form-field select { min-height: 40px; }
+      .btn-sm { min-width: 40px; }
+      a.btn { display: inline-flex; align-items: center; }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      .motor-telemetry { grid-template-columns: repeat(2, 1fr); }
+      .viewport-tools { top: auto; bottom: 10px; } /* keep clear of the HUD chips */
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -475,18 +522,20 @@
     <header>
       <div class="brand">
         <div>
-          <div class="brand-title">EVOLUTION-1 LOCOMOTION LAB</div>
+          <h1 class="brand-title">EVOLUTION-1 LOCOMOTION LAB</h1>
           <div class="brand-subtitle">Quadruped Physics Engine • Multi-Core Genetic Algorithm</div>
         </div>
       </div>
-      <div class="header-status">
+      <div class="header-status" role="status">
         <div class="status-indicator idle" id="statusIndicator"></div>
         <span id="statusText">System Ready</span>
       </div>
     </header>
 
+    <main>
     <!-- Top Metrics KPI Row -->
-    <div class="metrics-row">
+    <section class="metrics-row" aria-labelledby="metricsTitle">
+      <h2 class="sr-only" id="metricsTitle">Key Metrics</h2>
       <div class="metric-card">
         <div class="metric-label">Universal Record</div>
         <div class="metric-value" id="valUnivRecord">—</div>
@@ -497,33 +546,35 @@
         <div class="metric-value" id="valGenProgress">0 / 0</div>
         <div class="metric-sub" id="subTrainStatus">Idle</div>
       </div>
-      <div class="metric-card">
+      <div class="metric-card" aria-live="polite" aria-atomic="true">
         <div class="metric-label">Best Active Fitness</div>
         <div class="metric-value" id="valBestFitness">—</div>
-        <div class="metric-sub" id="subAvgFitness">Avg: —</div>
+        <div class="metric-sub" id="subAvgFitness" aria-live="off">Avg: —</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Population Diversity</div>
         <div class="metric-value" id="valDiversity">—</div>
         <div class="metric-sub">Weight Variance σ</div>
       </div>
-    </div>
+    </section>
 
     <!-- Workbench Grid -->
     <div class="workbench-grid">
       <!-- Left: Simulation Viewport -->
-      <div class="panel">
+      <section class="panel" aria-labelledby="simTitle">
         <div class="panel-header">
-          <div class="panel-title">Physics Simulation</div>
-          <div class="btn-group">
-            <button class="btn active" data-model="universal" onclick="switchModel('universal')">Universal Best</button>
-            <button class="btn" data-model="best" onclick="switchModel('best')">Session Best</button>
-            <button class="btn" data-model="random" onclick="switchModel('random')">Random (Untrained)</button>
+          <h2 class="panel-title" id="simTitle">Physics Simulation</h2>
+          <div class="btn-group" role="group" aria-label="Model to simulate">
+            <button class="btn active" data-model="best" aria-pressed="true" onclick="switchModel('best')">Session Best</button>
+            <button class="btn" data-model="universal" aria-pressed="false" onclick="switchModel('universal')">Universal Best</button>
+            <button class="btn" data-model="random" aria-pressed="false" onclick="switchModel('random')">Random (Untrained)</button>
           </div>
         </div>
 
         <div class="viewport" id="viewport">
-          <canvas id="simCanvas"></canvas>
+          <canvas id="simCanvas" role="img" aria-label="2D view of the physics simulation: a quadruped walker (white torso, blue rear legs, green front legs) moving right along the terrain, marked in pixels"></canvas>
+          <canvas id="sim3d" role="img" aria-label="3D view of the physics simulation: a quadruped walker (white torso, blue rear legs, green front legs) moving right along the terrain, with distance ticks every 100 pixels" hidden></canvas>
+          <p class="sr-only" id="simSummary">Loading the recorded replay.</p>
           <div class="viewport-hud">
             <div class="hud-chip">Distance: <strong id="hudDistance">0.0 px (0.00 m)</strong></div>
             <div class="hud-chip">Velocity: <strong id="hudSpeed">0.0 px/s</strong></div>
@@ -531,9 +582,10 @@
             <div class="hud-chip">Step: <strong id="hudStep">0 / 600</strong></div>
           </div>
           <div class="viewport-tools">
-            <button class="btn btn-sm" onclick="zoom(1.2)" title="Zoom In">+</button>
-            <button class="btn btn-sm" onclick="zoom(0.8)" title="Zoom Out">-</button>
-            <button class="btn btn-sm" onclick="resetZoom()" title="Reset Camera">1x</button>
+            <button class="btn btn-sm" id="btnView" aria-pressed="false" aria-label="3D view" title="Toggle 3D view" onclick="toggleView()" disabled>3D</button>
+            <button class="btn btn-sm" onclick="zoom(1.2)" title="Zoom In" aria-label="Zoom in">+</button>
+            <button class="btn btn-sm" onclick="zoom(0.8)" title="Zoom Out" aria-label="Zoom out">-</button>
+            <button class="btn btn-sm" onclick="resetZoom()" title="Reset Camera" aria-label="Reset zoom to 1x">1x</button>
           </div>
         </div>
 
@@ -558,33 +610,37 @@
         </div>
 
         <div class="viewport-footer">
-          <span style="color:var(--text-muted); font-size:0.75rem;">60 FPS Client-Side Pymunk Telemetry Stream</span>
-          <button class="btn btn-sm" onclick="reconnectStream()">↺ Reset Stream</button>
+          <span id="simSource" style="color:var(--text-muted); font-size:0.75rem;">Loading replay…</span>
+          <div class="btn-group">
+            <button class="btn btn-sm" id="btnLive" aria-pressed="false" onclick="setLive(!liveMode)" hidden>Live (server)</button>
+            <button class="btn btn-sm" onclick="restartSim()"><span aria-hidden="true">↺</span> Restart</button>
+          </div>
         </div>
-      </div>
+      </section>
 
       <!-- Right: Evolution Controller -->
-      <div class="panel">
+      <section class="panel" aria-labelledby="trainTitle">
         <div class="panel-header">
-          <div class="panel-title">Training Controller</div>
+          <h2 class="panel-title" id="trainTitle">Training Controller</h2>
           <span style="color:var(--text-muted); font-size:0.75rem;">Multiprocessing Engine</span>
         </div>
 
+        <!-- Readout spans are aria-hidden: the inputs already expose their values -->
         <div class="form-grid">
           <div class="form-field">
-            <label>Generations <span id="lblGens">50</span></label>
-            <input type="number" id="inpGens" value="50" min="5" max="1000" onchange="document.getElementById('lblGens').textContent = this.value" />
+            <label for="inpGens">Generations <span id="lblGens" aria-hidden="true">50</span></label>
+            <input type="number" id="inpGens" value="50" min="5" max="1000" oninput="document.getElementById('lblGens').textContent = this.value" />
           </div>
           <div class="form-field">
-            <label>Pop Size <span id="lblPop">50</span></label>
-            <input type="number" id="inpPop" value="50" min="10" max="500" onchange="document.getElementById('lblPop').textContent = this.value" />
+            <label for="inpPop">Pop Size <span id="lblPop" aria-hidden="true">50</span></label>
+            <input type="number" id="inpPop" value="50" min="10" max="500" oninput="document.getElementById('lblPop').textContent = this.value" />
           </div>
           <div class="form-field full">
-            <label>Mutation Rate <span id="lblMutation">0.15</span></label>
+            <label for="inpMutation">Mutation Rate <span id="lblMutation" aria-hidden="true">0.15</span></label>
             <input type="range" id="inpMutation" min="0.01" max="0.50" step="0.01" value="0.15" oninput="document.getElementById('lblMutation').textContent = this.value" />
           </div>
           <div class="form-field full">
-            <label>Fitness Function Mode</label>
+            <label for="inpMode">Fitness Function Mode</label>
             <select id="inpMode">
               <option value="baseline">Baseline (Forward Speed)</option>
               <option value="ground_termination" selected>Ground Termination (Fall Penalty)</option>
@@ -596,81 +652,116 @@
         </div>
 
         <div class="btn-group" style="margin-top:1.25rem">
-          <button class="btn btn-action-start" id="btnStart" onclick="startTraining()">▶ Run Evolution</button>
-          <button class="btn btn-action-pause" id="btnPause" onclick="togglePause()" disabled>⏸ Pause</button>
-          <button class="btn btn-action-stop" id="btnStop" onclick="stopTraining()" disabled>⏹ Stop</button>
+          <button class="btn btn-action-start" id="btnStart" onclick="startTraining()"><span aria-hidden="true">▶</span> Run Evolution</button>
+          <button class="btn btn-action-pause" id="btnPause" onclick="togglePause()" disabled><span aria-hidden="true">⏸</span> Pause</button>
+          <button class="btn btn-action-stop" id="btnStop" onclick="stopTraining()" disabled><span aria-hidden="true">⏹</span> Stop</button>
         </div>
+        <p class="demo-note" id="demoNote" hidden>Demo mode: training is disabled on this deployment, so Run Evolution is unavailable. You can still watch the saved models in the simulation.</p>
 
         <div class="progress-bar-container">
           <div class="progress-bar-fill" id="trainProgress"></div>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Lower Section: Tabs (Analytics, Live Logs, Checkpoints) -->
-    <div class="panel">
-      <div class="tabs-bar">
-        <button class="tab-btn active" onclick="switchTab('chart')">📈 Convergence & Diversity</button>
-        <button class="tab-btn" onclick="switchTab('logs')">📜 Live Evolution Logs</button>
-        <button class="tab-btn" onclick="switchTab('models')">💾 Model Checkpoints</button>
+    <section class="panel" aria-labelledby="analyticsTitle">
+      <h2 class="sr-only" id="analyticsTitle">Training Analytics</h2>
+      <div class="tabs-bar" role="tablist" aria-labelledby="analyticsTitle">
+        <button class="tab-btn active" role="tab" id="tabbtn-chart" data-tab="chart" aria-selected="true" aria-controls="tab-chart" onclick="switchTab('chart')"><span aria-hidden="true">📈</span> Convergence &amp; Diversity</button>
+        <button class="tab-btn" role="tab" id="tabbtn-logs" data-tab="logs" aria-selected="false" aria-controls="tab-logs" tabindex="-1" onclick="switchTab('logs')"><span aria-hidden="true">📜</span> Live Evolution Logs</button>
+        <button class="tab-btn" role="tab" id="tabbtn-models" data-tab="models" aria-selected="false" aria-controls="tab-models" tabindex="-1" onclick="switchTab('models')"><span aria-hidden="true">💾</span> Model Checkpoints</button>
       </div>
 
       <!-- Tab 1: Chart -->
-      <div class="tab-content active" id="tab-chart">
+      <div class="tab-content active" id="tab-chart" role="tabpanel" aria-labelledby="tabbtn-chart" tabindex="0">
         <div class="chart-panel">
-          <canvas id="fitnessChart"></canvas>
+          <canvas id="fitnessChart" role="img" aria-label="Line chart of best fitness, average fitness and population diversity (x100) per generation"></canvas>
         </div>
       </div>
 
       <!-- Tab 2: Logs -->
-      <div class="tab-content" id="tab-logs">
-        <div class="terminal-box" id="logTerminal">
+      <div class="tab-content" id="tab-logs" role="tabpanel" aria-labelledby="tabbtn-logs">
+        <div class="terminal-box" id="logTerminal" role="log" aria-label="Evolution log" tabindex="0">
           <div class="terminal-line">Connecting to evolution log stream...</div>
         </div>
       </div>
 
       <!-- Tab 3: Model Checkpoints -->
-      <div class="tab-content" id="tab-models">
+      <div class="tab-content" id="tab-models" role="tabpanel" aria-labelledby="tabbtn-models">
         <div class="downloads-grid">
           <div class="download-card">
             <div>
-              <div class="download-name">universal_best.pth</div>
+              <div class="download-name">universal_best.npz</div>
               <div class="download-desc">All-time record genome</div>
             </div>
-            <a href="/api/models/download/universal_best.pth" class="btn btn-sm">Download</a>
+            <a href="/api/models/download/universal_best.npz" class="btn btn-sm">Download<span class="sr-only"> universal_best.npz</span></a>
           </div>
           <div class="download-card">
             <div>
-              <div class="download-name">best_model.pth</div>
+              <div class="download-name">best_model.npz</div>
               <div class="download-desc">Current session best</div>
             </div>
-            <a href="/api/models/download/best_model.pth" class="btn btn-sm">Download</a>
+            <a href="/api/models/download/best_model.npz" class="btn btn-sm">Download<span class="sr-only"> best_model.npz</span></a>
           </div>
           <div class="download-card">
             <div>
-              <div class="download-name">top_0.pth</div>
+              <div class="download-name">top_0.npz</div>
               <div class="download-desc">Gen champion</div>
             </div>
-            <a href="/api/models/download/top_0.pth" class="btn btn-sm">Download</a>
+            <a href="/api/models/download/top_0.npz" class="btn btn-sm">Download<span class="sr-only"> top_0.npz</span></a>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+    </main>
   </div>
 
   <script>
-    // ── Canvas Telemetry Renderer ─────────────────────────────────────────────
+    // ── Simulation Viewport ───────────────────────────────────────────────────
+    // Default: play a replay recorded by scripts/record_replay.py (static file, no server work).
+    // Live (server) SSE is offered only when training is enabled (local use).
+    const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.min.js';
+    const REPLAY_PAUSE_S = 1.5; // hold on the last frame before looping
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
+    const canvas3d = document.getElementById('sim3d');
+    const btnView = document.getElementById('btnView');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let sseSource = null;
-    let currentModel = 'universal';
-    let currentFrame = null;
-    let smoothCamX = 400;
+    let currentModel = 'best';
+    let liveMode = false;
+    let livePose = null;
+    let lastLiveStep = 0;
+    let replay = null;
+    const replayCache = {};
+    let playT0 = 0;
+    let lastFrameIdx = -1;
+    let terrainPts = [[0, 495], [3000, 495]]; // replaced by the replay's terrain
+    let use3D = null; // null until Three.js has loaded or failed, so 2D doesn't flash first
+    let three = null;
+    const cam = { x: 400, y: 450 };
+    let snapCamera = true;
     let currentZoom = 1.0;
+    let lastSummaryAt = 0;
+
+    // Only write when changed, so live regions don't re-announce identical text on every poll
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el.textContent !== text) el.textContent = text;
+    }
 
     function resizeCanvas() {
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
+      const w = canvas.parentElement.clientWidth;
+      const h = canvas.parentElement.clientHeight;
+      canvas.width = w;
+      canvas.height = h;
+      if (three) {
+        three.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        three.renderer.setSize(w, h, false);
+        three.camera.aspect = w / h;
+        three.camera.updateProjectionMatrix();
+      }
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -683,6 +774,29 @@
       currentZoom = 1.0;
     }
 
+    // ── Sources: recorded replay / live SSE ──
+    async function loadReplay(model) {
+      setText('simSource', 'Loading replay…');
+      replayCache[model] = replayCache[model] || fetch(`/static/replays/${model}.json`).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      });
+      let data;
+      try {
+        data = await replayCache[model];
+      } catch (e) {
+        delete replayCache[model];
+        setText('simSource', 'Replay failed to load');
+        setText('simSummary', 'The recorded replay failed to load.');
+        return;
+      }
+      if (model !== currentModel || liveMode) return; // a newer choice won the race
+      replay = data;
+      terrainPts = data.terrain;
+      restartSim();
+      setText('simSource', `Recorded replay: ${data.distance.toFixed(0)} px in ${data.steps} steps${data.fallen ? ', fell' : ''} · ${data.fps} fps · ${data.recorded_at.slice(0, 10)}`);
+    }
+
     function connectStream(model) {
       if (sseSource) sseSource.close();
       sseSource = new EventSource(`/api/stream/sim?model=${model}`);
@@ -690,9 +804,10 @@
       sseSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          currentFrame = data;
-          updateHUD(data);
-          updateMotorTelemetry(data.actions);
+          if (data.steps < lastLiveStep) snapCamera = true; // server started a new episode
+          lastLiveStep = data.steps;
+          livePose = { x: data.torso.x, y: data.torso.y, a: data.torso.angle, legs: data.legs.map(l => [l.x, l.y, l.angle]) };
+          showFrameData(data);
         } catch (e) {}
       };
 
@@ -701,16 +816,76 @@
       };
     }
 
+    function setLive(on) {
+      liveMode = on;
+      const btn = document.getElementById('btnLive');
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on);
+      if (on) {
+        livePose = null;
+        snapCamera = true;
+        connectStream(currentModel);
+        setText('simSource', 'Live server stream · 45 fps');
+      } else {
+        if (sseSource) sseSource.close();
+        sseSource = null;
+        loadReplay(currentModel);
+      }
+    }
+
     function switchModel(model) {
       currentModel = model;
       document.querySelectorAll('.btn[data-model]').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-model') === model);
+        const on = b.getAttribute('data-model') === model;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on);
       });
-      connectStream(model);
+      if (liveMode) connectStream(model);
+      else loadReplay(model);
     }
 
-    function reconnectStream() {
-      connectStream(currentModel);
+    function restartSim() {
+      snapCamera = true;
+      if (liveMode) {
+        connectStream(currentModel);
+      } else {
+        playT0 = performance.now();
+        lastFrameIdx = -1;
+      }
+    }
+
+    // Frame layout: see FIELDS in scripts/record_replay.py
+    // [tx, ty, ta, l0x, l0y, l0a, ... l3x, l3y, l3a, a0, a1, a2, a3, vx]
+    function replayPose(now) {
+      const frames = replay.frames;
+      const n = frames.length;
+      const period = (n - 1) / replay.fps + REPLAY_PAUSE_S;
+      const t = (((now - playT0) / 1000) % period) * replay.fps;
+      const i = Math.min(n - 1, Math.floor(t));
+      if (i !== lastFrameIdx) {
+        if (i < lastFrameIdx) snapCamera = true; // looped back to the start
+        lastFrameIdx = i;
+        const f = frames[i];
+        showFrameData({
+          distance: f[0] - replay.spawn_x,
+          velocity_x: f[19],
+          angle: f[2],
+          steps: i + 1,
+          fallen: replay.fallen && i === n - 1,
+          actions: f.slice(15, 19),
+        });
+      }
+      const f0 = frames[i];
+      const f1 = frames[Math.min(n - 1, i + 1)];
+      const k = Math.min(1, t - i);
+      const v = j => f0[j] + (f1[j] - f0[j]) * k;
+      return { x: v(0), y: v(1), a: v(2), legs: [0, 1, 2, 3].map(L => [v(3 + 3 * L), v(4 + 3 * L), v(5 + 3 * L)]) };
+    }
+
+    function showFrameData(data) {
+      updateHUD(data);
+      updateMotorTelemetry(data.actions);
+      updateSimSummary(data);
     }
 
     function updateHUD(data) {
@@ -720,6 +895,16 @@
       document.getElementById('hudSpeed').textContent = (data.velocity_x || 0).toFixed(1) + ' px/s';
       document.getElementById('hudAngle').textContent = (data.angle || 0).toFixed(2) + ' rad';
       document.getElementById('hudStep').textContent = `${data.steps || 0} / 600`;
+    }
+
+    // Text alternative for the canvas; throttled to 1/s and deliberately not aria-live (it never stops changing)
+    function updateSimSummary(data) {
+      const now = performance.now();
+      if (now - lastSummaryAt < 1000) return;
+      lastSummaryAt = now;
+      const model = document.querySelector('.btn[data-model].active').textContent;
+      const meters = (data.distance_meters || (data.distance || 0) * 0.02).toFixed(2);
+      setText('simSummary', `${model} model${liveMode ? ' (live)' : ' (recorded replay)'}: ${meters} m travelled, step ${data.steps || 0} of 600, ${data.fallen ? 'fallen' : 'upright'}.`);
     }
 
     function updateMotorTelemetry(actions) {
@@ -743,77 +928,99 @@
       });
     }
 
-    function render() {
+    // ── Rendering ──
+    function frameLoop(now) {
+      const pose = liveMode ? livePose : (replay && replayPose(now));
+      if (pose && use3D !== null) {
+        const k = snapCamera || reduceMotion.matches ? 1 : 0.12;
+        snapCamera = false;
+        cam.x += (pose.x - cam.x) * k;
+        cam.y += (pose.y - cam.y) * k;
+        if (use3D) draw3D(pose);
+        else draw2D(pose);
+      }
+      requestAnimationFrame(frameLoop);
+    }
+
+    // Ground height (y down) at x from the terrain polyline; null past either end
+    function groundY(x) {
+      for (let i = terrainPts.length - 1; i > 0; i--) {
+        const [x0, y0] = terrainPts[i - 1];
+        const [x1, y1] = terrainPts[i];
+        if (x1 > x0 && x >= x0 && x <= x1) return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+      }
+      return null;
+    }
+
+    function draw2D(pose) {
+      const z = currentZoom;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // World y=495 (the ground surface) sits at 70% of the canvas height
+      ctx.setTransform(z, 0, 0, z, canvas.width / 2 - cam.x * z, canvas.height * 0.7 - 495 * z);
 
-      if (currentFrame && currentFrame.torso) {
-        const torso = currentFrame.torso;
-        smoothCamX += (torso.x - smoothCamX) * 0.15;
+      // Terrain
+      ctx.beginPath();
+      terrainPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.lineTo(terrainPts[terrainPts.length - 1][0], 2000);
+      ctx.lineTo(terrainPts[0][0], 2000);
+      ctx.fillStyle = '#121214';
+      ctx.fill();
+      ctx.beginPath();
+      terrainPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.strokeStyle = '#71717a';
+      ctx.lineWidth = 2 / z;
+      ctx.stroke();
 
-        const offsetX = canvas.width / 2 - smoothCamX * currentZoom;
-        const offsetY = canvas.height - 490 * currentZoom;
-
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.scale(currentZoom, currentZoom);
-        ctx.translate(-canvas.width / 2 + (offsetX / currentZoom), -canvas.height / 2 + (offsetY / currentZoom));
-
-        // Ground Plane Line
-        ctx.strokeStyle = '#27272a';
-        ctx.lineWidth = 2 / currentZoom;
+      // Ground Distance Ticks
+      const spawnX = replay ? replay.spawn_x : 400;
+      ctx.fillStyle = '#82828b';
+      ctx.font = '11px JetBrains Mono';
+      ctx.strokeStyle = '#3f3f46';
+      ctx.lineWidth = 1 / z;
+      const startX = spawnX + Math.floor((cam.x - canvas.width / z - spawnX) / 100) * 100;
+      const endX = cam.x + canvas.width / z;
+      for (let x = startX; x <= endX; x += 100) {
+        const gy = groundY(x);
+        if (gy === null) continue;
         ctx.beginPath();
-        ctx.moveTo(-10000, 500);
-        ctx.lineTo(10000, 500);
+        ctx.moveTo(x, gy);
+        ctx.lineTo(x, gy + 10);
         ctx.stroke();
-
-        // Ground Distance Ticks
-        ctx.fillStyle = '#71717a';
-        ctx.font = '11px JetBrains Mono';
-        const startX = Math.floor((smoothCamX - (canvas.width / currentZoom)) / 100) * 100;
-        const endX = smoothCamX + (canvas.width / currentZoom);
-
-        for (let x = startX; x <= endX; x += 100) {
-          ctx.beginPath();
-          ctx.moveTo(x, 500);
-          ctx.lineTo(x, 510);
-          ctx.strokeStyle = '#3f3f46';
-          ctx.lineWidth = 1 / currentZoom;
-          ctx.stroke();
-          ctx.fillText(`${x - 400}px`, x - 15, 525);
-        }
-
-        // Back Legs (Solid Blue)
-        if (currentFrame.legs) {
-          currentFrame.legs.slice(0, 2).forEach(leg => {
-            drawRotatedRect(ctx, leg.x, leg.y, leg.width, leg.height, leg.angle, '#1d4ed8', '#3b82f6');
-          });
-        }
-
-        // Torso (Solid White with Crisp Dark Border)
-        drawRotatedRect(ctx, torso.x, torso.y, torso.width, torso.height, torso.angle, '#ffffff', '#e4e4e7');
-
-        // Eye Indicator
-        ctx.save();
-        ctx.translate(torso.x, torso.y);
-        ctx.rotate(torso.angle);
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(20, -3, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        // Front Legs (Solid Green)
-        if (currentFrame.legs) {
-          currentFrame.legs.slice(2, 4).forEach(leg => {
-            drawRotatedRect(ctx, leg.x, leg.y, leg.width, leg.height, leg.angle, '#22c55e', '#16a34a');
-          });
-        }
-
-        ctx.restore();
+        ctx.fillText(`${x - spawnX}px`, x - 15, gy + 25);
       }
 
-      requestAnimationFrame(render);
+      // Start / goal markers
+      ctx.strokeStyle = '#eab308';
+      ctx.fillStyle = '#eab308';
+      [[spawnX, 'START'], [replay ? replay.goal_x : 4000, 'GOAL']].forEach(([x, text]) => {
+        const gy = groundY(x) ?? 495;
+        ctx.beginPath();
+        ctx.moveTo(x, gy);
+        ctx.lineTo(x, gy - 70);
+        ctx.stroke();
+        ctx.fillText(text, x + 4, gy - 62);
+      });
+
+      // Back Legs (Solid Blue)
+      pose.legs.slice(0, 2).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, 10, 40, a, '#1d4ed8', '#3b82f6'));
+
+      // Torso (Solid White with Crisp Dark Border)
+      drawRotatedRect(ctx, pose.x, pose.y, 60, 20, pose.a, '#ffffff', '#e4e4e7');
+
+      // Eye Indicator
+      ctx.save();
+      ctx.translate(pose.x, pose.y);
+      ctx.rotate(pose.a);
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(20, -3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Front Legs (Solid Green)
+      pose.legs.slice(2, 4).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, 10, 40, a, '#22c55e', '#16a34a'));
     }
 
     function drawRotatedRect(c, x, y, width, height, angle, fill, stroke) {
@@ -833,15 +1040,175 @@
       c.restore();
     }
 
+    // 3D: the same 2D physics drawn with depth. World units are physics px; y is flipped
+    // (Pymunk y points down) and angles negated. Meshes are built once; frames only move them.
+    async function init3D() {
+      try {
+        const THREE = await import(THREE_URL);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+        renderer.shadowMap.enabled = true;
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        const camera = new THREE.PerspectiveCamera(35, 2, 1, 8000);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(1024, 1024);
+        Object.assign(sun.shadow.camera, { left: -200, right: 200, top: 200, bottom: -200, near: 1, far: 1200 });
+        scene.add(sun, sun.target);
+
+        const mat = color => new THREE.MeshLambertMaterial({ color });
+        const box = (w, h, d, color) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
+          m.castShadow = m.receiveShadow = true;
+          scene.add(m);
+          return m;
+        };
+        const torso = box(60, 20, 30, 0xfafafa);
+        const eye = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 31), mat(0x000000));
+        eye.position.set(20, 3, 0);
+        torso.add(eye);
+        // Physics legs share one plane; spread them across z so the pairs read as a quadruped.
+        // 0/1 = rear outer/inner (blue), 2/3 = front inner/outer (green); outer legs face the camera.
+        const legs = [[0x3b82f6, 11], [0x3b82f6, -11], [0x22c55e, -11], [0x22c55e, 11]].map(([color, z]) => {
+          const m = box(10, 40, 8, color);
+          m.position.z = z;
+          return m;
+        });
+
+        await document.fonts.ready; // labels are drawn with JetBrains Mono
+        three = { THREE, renderer, scene, camera, sun, mat, torso, legs, terrain: null };
+        resizeCanvas();
+        btnView.disabled = false;
+        setView(true);
+      } catch (e) {
+        three = null;
+        btnView.title = '3D view unavailable (WebGL failed to start)';
+        btnView.disabled = true;
+        setView(false);
+      }
+    }
+
+    function label3D(text, color) {
+      const { THREE } = three;
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 32;
+      const g = c.getContext('2d');
+      g.font = '600 20px "JetBrains Mono", monospace';
+      g.fillStyle = color;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(text, 64, 16);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+      s.scale.set(48, 12, 1);
+      three.scene.add(s);
+      return s;
+    }
+
+    function buildTerrain3D() {
+      const { THREE, scene, mat } = three;
+      const HALF = 60; // strip half-depth (z)
+      const shape = new THREE.Shape();
+      terrainPts.forEach(([x, y], i) => (i ? shape.lineTo(x, -y) : shape.moveTo(x, -y)));
+      shape.lineTo(terrainPts[terrainPts.length - 1][0], -700);
+      shape.lineTo(terrainPts[0][0], -700);
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 2 * HALF, bevelEnabled: false });
+      geo.translate(0, 0, -HALF);
+      const ground = new THREE.Mesh(geo, [mat(0x121214), mat(0x3f3f46)]); // [front/back faces, top + sides]
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Front edge of the surface, plus ticks across the strip every 100 px (brighter every 500)
+      const pt = (x, y, z) => new THREE.Vector3(x, y, z);
+      const edge = terrainPts.map(([x, y]) => pt(x, -y, HALF + 0.5));
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(edge), new THREE.LineBasicMaterial({ color: 0xa1a1aa })));
+      const spawnX = replay ? replay.spawn_x : 400;
+      const minor = [];
+      const major = [];
+      const x0 = terrainPts[0][0];
+      for (let x = spawnX - Math.floor((spawnX - x0) / 100) * 100; x <= terrainPts[terrainPts.length - 1][0]; x += 100) {
+        const gy = -groundY(x) + 0.5;
+        ((x - spawnX) % 500 === 0 ? major : minor).push(pt(x, gy, -HALF), pt(x, gy, HALF + 0.5), pt(x, gy, HALF + 0.5), pt(x, gy - 10, HALF + 0.5));
+        // Sprites turn to face the camera; keep them far enough out that they don't dip into the ground
+        label3D(`${x - spawnX}`, '#a1a1aa').position.set(x, gy - 20, HALF + 14);
+      }
+      scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(minor), new THREE.LineBasicMaterial({ color: 0x52525b })));
+      scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(major), new THREE.LineBasicMaterial({ color: 0xd4d4d8 })));
+
+      // Start / goal posts on the far edge
+      [[spawnX, 'START'], [replay ? replay.goal_x : 4000, 'GOAL']].forEach(([x, text]) => {
+        const gy = -(groundY(x) ?? 495);
+        const post = new THREE.Mesh(new THREE.BoxGeometry(3, 80, 3), new THREE.MeshBasicMaterial({ color: 0xeab308 }));
+        post.position.set(x, gy + 40, -HALF + 2);
+        scene.add(post);
+        label3D(text, '#eab308').position.set(x, gy + 90, -HALF + 2);
+      });
+      three.terrain = ground;
+    }
+
+    function draw3D(pose) {
+      const t = three;
+      if (!t.terrain) buildTerrain3D();
+      t.torso.position.set(pose.x, -pose.y, 0);
+      t.torso.rotation.z = -pose.a;
+      pose.legs.forEach(([x, y, a], i) => {
+        t.legs[i].position.x = x;
+        t.legs[i].position.y = -y;
+        t.legs[i].rotation.z = -a;
+      });
+      // Follow camera at a 3/4 angle: in front of, slightly behind and above the walker
+      const d = Math.max(1, 1.5 / t.camera.aspect) / currentZoom; // pull back on narrow (phone) viewports
+      const tx = cam.x;
+      const ty = -cam.y;
+      t.camera.position.set(tx - 120 * d, ty + 110 * d, 340 * d);
+      t.camera.lookAt(tx + 20, ty - 15, 0);
+      t.sun.position.set(tx - 120, ty + 400, 220);
+      t.sun.target.position.set(tx, ty, 0);
+      t.renderer.render(t.scene, t.camera);
+    }
+
+    function setView(is3D) {
+      use3D = is3D;
+      canvas.hidden = is3D;
+      canvas3d.hidden = !is3D;
+      btnView.classList.toggle('active', is3D);
+      btnView.setAttribute('aria-pressed', is3D);
+      snapCamera = true;
+      resizeCanvas();
+    }
+
+    function toggleView() {
+      if (three) setView(!use3D);
+    }
+
     // ── Tab Switcher ──────────────────────────────────────────────────────────
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tabId));
+        const on = btn.dataset.tab === tabId;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', on);
+        btn.tabIndex = on ? 0 : -1;
       });
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       const activeEl = document.getElementById(`tab-${tabId}`);
       if (activeEl) activeEl.classList.add('active');
     }
+
+    // Arrow/Home/End move between tabs (WAI-ARIA tabs pattern)
+    document.querySelector('.tabs-bar').addEventListener('keydown', e => {
+      const tabs = [...document.querySelectorAll('.tab-btn')];
+      const i = tabs.indexOf(document.activeElement);
+      const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (i < 0 || next === undefined) return;
+      e.preventDefault();
+      const tab = tabs[(next + tabs.length) % tabs.length];
+      tab.focus();
+      switchTab(tab.dataset.tab);
+    });
 
     // ── Training State & API ──────────────────────────────────────────────────
     async function pollTrainingStatus() {
@@ -853,40 +1220,45 @@
         const btnPause = document.getElementById('btnPause');
         const btnStop = document.getElementById('btnStop');
         const indicator = document.getElementById('statusIndicator');
-        const text = document.getElementById('statusText');
 
         if (state.is_training) {
           btnStart.disabled = true;
           btnPause.disabled = false;
           btnStop.disabled = false;
-          btnPause.textContent = state.paused ? '▶ Resume' : '⏸ Pause';
+          const pauseHtml = state.paused ? '<span aria-hidden="true">▶</span> Resume' : '<span aria-hidden="true">⏸</span> Pause';
+          if (btnPause.innerHTML !== pauseHtml) btnPause.innerHTML = pauseHtml;
 
           indicator.className = state.paused ? 'status-indicator paused' : 'status-indicator running';
-          text.textContent = state.paused ? 'Evolution Paused' : `Evolving Gen ${state.current_generation} / ${state.total_generations}`;
+          setText('statusText', state.paused ? 'Evolution Paused' : `Evolving Gen ${state.current_generation} / ${state.total_generations}`);
 
-          document.getElementById('valGenProgress').textContent = `${state.current_generation} / ${state.total_generations}`;
-          document.getElementById('subTrainStatus').textContent = state.paused ? 'Paused' : 'Running Rollouts';
+          setText('valGenProgress', `${state.current_generation} / ${state.total_generations}`);
+          setText('subTrainStatus', state.paused ? 'Paused' : 'Running Rollouts');
 
           if (state.best_fitness != null) {
-            document.getElementById('valBestFitness').textContent = state.best_fitness.toFixed(1);
+            setText('valBestFitness', state.best_fitness.toFixed(1));
           }
           if (state.avg_fitness != null) {
-            document.getElementById('subAvgFitness').textContent = `Avg: ${state.avg_fitness.toFixed(1)}`;
+            setText('subAvgFitness', `Avg: ${state.avg_fitness.toFixed(1)}`);
           }
           if (state.diversity_score != null) {
-            document.getElementById('valDiversity').textContent = state.diversity_score.toFixed(4);
+            setText('valDiversity', state.diversity_score.toFixed(4));
           }
 
           const pct = Math.min(100, (state.current_generation / state.total_generations) * 100);
           document.getElementById('trainProgress').style.width = pct + '%';
         } else {
-          btnStart.disabled = false;
+          const demoMode = state.training_enabled === false;
+          btnStart.disabled = demoMode;
           btnPause.disabled = true;
           btnStop.disabled = true;
           indicator.className = 'status-indicator idle';
-          text.textContent = 'System Ready';
-          document.getElementById('subTrainStatus').textContent = 'Idle';
+          setText('statusText', demoMode ? 'Demo mode: training disabled' : 'System Ready');
+          setText('subTrainStatus', 'Idle');
+          document.getElementById('demoNote').hidden = !demoMode;
+          if (demoMode) btnStart.setAttribute('aria-describedby', 'demoNote');
+          else btnStart.removeAttribute('aria-describedby');
         }
+        return state;
       } catch (e) {}
     }
 
@@ -930,16 +1302,23 @@
       } catch (e) {}
     }
 
+    // Append only new lines so the role="log" region announces just what's new, not the whole tail.
+    let lastLogLine = null;
     async function fetchLogs() {
       try {
         const res = await fetch('/api/logs/tail');
         const lines = await res.json();
         if (!Array.isArray(lines) || lines.length === 0) return;
         const box = document.getElementById('logTerminal');
-        box.innerHTML = lines.map(l => {
+        const fresh = lines.slice(lines.lastIndexOf(lastLogLine) + 1);
+        if (fresh.length === 0) return;
+        if (lastLogLine === null) box.textContent = '';
+        box.insertAdjacentHTML('beforeend', fresh.map(l => {
           const isRec = l.includes('RECORD') || l.includes('UNIVERSAL');
           return `<div class="terminal-line ${isRec ? 'record' : ''}">${escapeHtml(l.trim())}</div>`;
-        }).join('');
+        }).join(''));
+        while (box.children.length > lines.length) box.firstElementChild.remove();
+        lastLogLine = lines[lines.length - 1];
         box.scrollTop = box.scrollHeight;
       } catch (e) {}
     }
@@ -1021,11 +1400,11 @@
               },
               scales: {
                 x: {
-                  ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
+                  ticks: { color: '#82828b', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
                   grid: { color: '#18181b' }
                 },
                 y: {
-                  ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 } },
+                  ticks: { color: '#82828b', font: { family: 'JetBrains Mono', size: 10 } },
                   grid: { color: '#18181b' }
                 }
               }
@@ -1041,15 +1420,35 @@
       } catch (e) {}
     }
 
+    // ── Polling: only while training is possible and the tab is visible ──
+    const pollers = [[pollTrainingStatus, 1000], [fetchHistory, 4000], [fetchLogs, 2500]];
+    let pollTimers = [];
+    let trainingEnabled = false;
+
+    function setPolling(on) {
+      pollTimers.forEach(clearInterval);
+      pollTimers = on ? pollers.map(([fn, ms]) => setInterval(fn, ms)) : [];
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!trainingEnabled) return;
+      if (!document.hidden) pollers.forEach(([fn]) => fn());
+      setPolling(!document.hidden);
+    });
+
     // Init
-    connectStream('universal');
-    render();
+    loadReplay(currentModel);
+    init3D();
+    requestAnimationFrame(frameLoop);
     fetchBestMeta();
     fetchHistory();
     fetchLogs();
-    setInterval(pollTrainingStatus, 1000);
-    setInterval(fetchHistory, 4000);
-    setInterval(fetchLogs, 2500);
+    pollTrainingStatus().then(state => {
+      // Demo mode: status, history and logs can't change, so the single fetch above is enough
+      trainingEnabled = !!(state && state.training_enabled);
+      document.getElementById('btnLive').hidden = !trainingEnabled;
+      if (trainingEnabled) setPolling(!document.hidden);
+    });
   </script>
 </body>
 </html>

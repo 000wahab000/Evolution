@@ -9,16 +9,17 @@ description = "A lightweight 2D physics evolutionary laboratory combining geneti
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "torch>=2.0.0",
     "pymunk>=6.0.0",
-    "pygame>=2.5.0",
     "numpy>=1.24.0",
     "flask>=3.0.0",
     "gunicorn>=21.2.0",
-    "matplotlib>=3.7.0",
 ]
 
 [project.optional-dependencies]
+viz = [
+    "pygame>=2.5.0",
+    "matplotlib>=3.7.0",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.3.0",
@@ -28,7 +29,7 @@ dev = [
 evolution-train = "main:main"
 
 [tool.setuptools]
-py-modules = ["app", "main", "plot_logs"]
+py-modules = ["app", "main"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -45,4 +46,3 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-norecursedirs = ["spinningup"]

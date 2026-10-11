@@ -9,5 +9,4 @@ services:
       - ./logs:/app/logs
     environment:
       - PORT=8000
-      - SDL_VIDEODRIVER=dummy
       - PYTHONUNBUFFERED=1
