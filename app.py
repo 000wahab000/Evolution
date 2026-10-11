@@ -7,12 +7,11 @@ import time
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 import numpy as np
-import torch
 
 from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
-from src.utils import atomic_torch_save, load_universal_best_meta, save_universal_best
+from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
 
 app = Flask(__name__)
 
@@ -78,25 +77,22 @@ def run_training_loop():
                 avg_fit = float(np.mean(pop.fitnesses))
                 worst_fit = float(np.min(pop.fitnesses))
 
-                with torch.no_grad():
-                    param_matrix = torch.stack([
-                        torch.cat([p.view(-1) for p in m.parameters()]) for m in pop.models
-                    ])
-                    diversity = float(torch.std(param_matrix, dim=0).mean().item())
+                param_matrix = np.stack([np.concatenate([p.ravel() for p in m.parameters()]) for m in pop.models])
+                diversity = float(param_matrix.std(axis=0, ddof=1).mean())  # sample std keeps Diversity_Score comparable with older logs
 
                 training_state["best_fitness"] = float(gen_best_fitness)
                 training_state["avg_fitness"] = avg_fit
                 training_state["diversity_score"] = diversity
 
                 # Save session best
-                atomic_torch_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.pth"))
+                atomic_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.npz"))
 
                 # Save top 5
                 sorted_indices = np.argsort(pop.fitnesses)[::-1]
                 for idx_rank in range(min(5, len(pop.models))):
-                    atomic_torch_save(
+                    atomic_save(
                         pop.models[sorted_indices[idx_rank]].state_dict(),
-                        os.path.join("models", f"top_{idx_rank}.pth"),
+                        os.path.join("models", f"top_{idx_rank}.npz"),
                     )
 
                 # Universal record update
@@ -237,15 +233,14 @@ def stream_simulation():
 
     def generate():
         brain = CreatureBrain()
-        if model_type == "universal" and os.path.exists(os.path.join("models", "universal_best.pth")):
-            brain.load_state_dict(torch.load(os.path.join("models", "universal_best.pth"), weights_only=True))
-        elif model_type == "best" and os.path.exists(os.path.join("models", "best_model.pth")):
-            brain.load_state_dict(torch.load(os.path.join("models", "best_model.pth"), weights_only=True))
+        if model_type == "universal" and os.path.exists(os.path.join("models", "universal_best.npz")):
+            brain.load_state_dict(load_state_dict_file(os.path.join("models", "universal_best.npz")))
+        elif model_type == "best" and os.path.exists(os.path.join("models", "best_model.npz")):
+            brain.load_state_dict(load_state_dict_file(os.path.join("models", "best_model.npz")))
         elif model_type.startswith("top_"):
-            top_path = os.path.join("models", f"{model_type}.pth")
+            top_path = os.path.join("models", f"{model_type}.npz")
             if os.path.exists(top_path):
-                brain.load_state_dict(torch.load(top_path, weights_only=True))
-        brain.eval()
+                brain.load_state_dict(load_state_dict_file(top_path))
 
         env = CreatureEnv(fitness_mode="baseline")
         state = env.reset()
@@ -282,7 +277,7 @@ def stream_simulation():
 @app.route("/api/models/download/<filename>")
 def download_model(filename):
     """Secure endpoint to download model checkpoints directly from browser."""
-    safe_names = ["universal_best.pth", "best_model.pth", "top_0.pth", "top_1.pth", "top_2.pth", "top_3.pth", "top_4.pth"]
+    safe_names = ["universal_best.npz", "best_model.npz", "top_0.npz", "top_1.npz", "top_2.npz", "top_3.npz", "top_4.npz"]
     if filename not in safe_names:
         return jsonify({"error": "Invalid model filename"}), 400
     models_dir = os.path.abspath("models")

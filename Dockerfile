@@ -14,10 +14,7 @@ WORKDIR /app
 ARG UID=10001
 RUN useradd -m -u "${UID}" -s /bin/bash appuser
 
-# Install CPU-only torch before installing other dependencies.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining dependencies using BuildKit pip cache.
+# Install dependencies using BuildKit pip cache.
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     pip install -r requirements.txt

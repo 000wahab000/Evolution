@@ -1,30 +1,36 @@
 import os
-import pytest
-import torch
-import torch.nn as nn
-from src.utils import atomic_torch_save, load_universal_best_meta, save_universal_best
+
+import numpy as np
+from src.model import CreatureBrain
+from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
 
 
-class SimpleModel(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc = nn.Linear(4, 2)
+def test_atomic_save(tmp_path):
+    save_path = str(tmp_path / "subdir" / "test_weights.npz")
+    state_dict = {"w": np.array([1.0, 2.0, 3.0], dtype=np.float32)}
+
+    atomic_save(state_dict, save_path)
+
+    assert os.listdir(tmp_path / "subdir") == ["test_weights.npz"]  # no stray temp file
+    loaded = load_state_dict_file(save_path)
+    assert np.array_equal(state_dict["w"], loaded["w"])
+    assert loaded["w"].dtype == np.float32
 
 
-def test_atomic_torch_save(tmp_path):
-    save_path = str(tmp_path / "subdir" / "test_tensor.pth")
-    tensor_data = torch.tensor([1.0, 2.0, 3.0])
+def test_brain_save_load_roundtrip(tmp_path):
+    save_path = str(tmp_path / "brain.npz")
+    brain = CreatureBrain()
+    atomic_save(brain.state_dict(), save_path)
 
-    atomic_torch_save(tensor_data, save_path)
-
-    assert os.path.exists(save_path)
-    loaded = torch.load(save_path, weights_only=True)
-    assert torch.equal(tensor_data, loaded)
+    restored = CreatureBrain()
+    restored.load_state_dict(load_state_dict_file(save_path))
+    state = np.random.randn(15).astype(np.float32)
+    assert np.array_equal(brain.get_action(state), restored.get_action(state))
 
 
 def test_save_and_load_universal_best(tmp_path):
     models_dir = str(tmp_path / "models")
-    model = SimpleModel()
+    model = CreatureBrain()
 
     save_universal_best(
         model=model,
@@ -36,8 +42,8 @@ def test_save_and_load_universal_best(tmp_path):
         models_dir=models_dir,
     )
 
-    best_pth = os.path.join(models_dir, "universal_best.pth")
-    assert os.path.exists(best_pth)
+    best_path = os.path.join(models_dir, "universal_best.npz")
+    assert os.path.exists(best_path)
 
     meta = load_universal_best_meta(models_dir)
     assert meta["best_fitness"] == 123.45

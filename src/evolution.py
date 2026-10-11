@@ -1,7 +1,6 @@
 import random
 
 import numpy as np
-import torch
 
 # pyrefly: ignore [missing-import]
 from src.environment import CreatureEnv
@@ -17,7 +16,6 @@ def evaluate_genome(args):
     state_dict, fitness_mode, max_steps = args
     brain = CreatureBrain()
     brain.load_state_dict(state_dict)
-    brain.eval()
     env = CreatureEnv(fitness_mode=fitness_mode)
     state = env.reset()
     total_reward = 0.0
@@ -48,7 +46,7 @@ class Population:
 
     def clone_model(self, source):
         child = self.model_class()
-        child.load_state_dict({k: v.clone() for k, v in source.state_dict().items()})
+        child.load_state_dict(source.state_dict())  # load_state_dict copies the arrays
         return child
 
     def evaluate(self, fitness_mode="baseline", max_steps=600, pool=None):
@@ -63,19 +61,17 @@ class Population:
 
     def mutate(self, model, in_place=False):
         child = model if in_place else self.clone_model(model)
-        with torch.no_grad():
-            for param in child.parameters():
-                mutation_mask = (torch.rand_like(param) < self.mutation_rate).float()
-                mutation_noise = torch.randn_like(param) * self.mutation_scale
-                param.add_(mutation_mask * mutation_noise)
+        for param in child.parameters():
+            mutation_mask = np.random.rand(*param.shape) < self.mutation_rate
+            mutation_noise = np.random.randn(*param.shape) * self.mutation_scale
+            param += mutation_mask * mutation_noise
         return child
 
     def crossover(self, parent1, parent2):
         child = self.clone_model(parent1)
-        with torch.no_grad():
-            for p_child, p2 in zip(child.parameters(), parent2.parameters()):
-                mask = torch.rand_like(p_child) < 0.5
-                p_child.data.copy_(torch.where(mask, p_child.data, p2.data))
+        for p_child, p2 in zip(child.parameters(), parent2.parameters()):
+            mask = np.random.rand(*p_child.shape) < 0.5
+            p_child[:] = np.where(mask, p_child, p2)
         return child
 
     def evolve(self):

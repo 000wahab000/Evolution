@@ -1,21 +1,28 @@
 import json
 import os
 import time
-import torch
+
+import numpy as np
 
 DEFAULT_MODELS_DIR = "models"
-UNIVERSAL_BEST_PATH = os.path.join(DEFAULT_MODELS_DIR, "universal_best.pth")
+UNIVERSAL_BEST_PATH = os.path.join(DEFAULT_MODELS_DIR, "universal_best.npz")
 UNIVERSAL_META_PATH = os.path.join(DEFAULT_MODELS_DIR, "universal_best_meta.json")
 
 
-def atomic_torch_save(obj, path: str) -> None:
-    """Save PyTorch tensor or state_dict atomically via temp file replacement."""
+def atomic_save(state_dict: dict, path: str) -> None:
+    """Save a state_dict of NumPy arrays (.npz) atomically via temp file replacement."""
     dir_name = os.path.dirname(path)
     if dir_name:
         os.makedirs(dir_name, exist_ok=True)
-    tmp_path = path + ".tmp"
-    torch.save(obj, tmp_path)
+    tmp_path = path + ".tmp.npz"  # np.savez appends ".npz" to names that lack it
+    np.savez(tmp_path, **state_dict)
     os.replace(tmp_path, path)
+
+
+def load_state_dict_file(path: str) -> dict:
+    """Load a state_dict saved by atomic_save."""
+    with np.load(path) as data:
+        return {k: data[k] for k in data.files}
 
 
 def load_universal_best_meta(models_dir: str = DEFAULT_MODELS_DIR) -> dict:
@@ -31,7 +38,7 @@ def load_universal_best_meta(models_dir: str = DEFAULT_MODELS_DIR) -> dict:
 
 
 def save_universal_best(
-    model: torch.nn.Module,
+    model,
     fitness: float,
     generation: int,
     fitness_mode: str,
@@ -41,10 +48,10 @@ def save_universal_best(
 ) -> None:
     """Atomically persist the universal best model weights and metadata."""
     os.makedirs(models_dir, exist_ok=True)
-    best_path = os.path.join(models_dir, "universal_best.pth")
+    best_path = os.path.join(models_dir, "universal_best.npz")
     meta_path = os.path.join(models_dir, "universal_best_meta.json")
 
-    atomic_torch_save(model.state_dict(), best_path)
+    atomic_save(model.state_dict(), best_path)
     meta = {
         "best_fitness": float(fitness),
         "generation": int(generation),

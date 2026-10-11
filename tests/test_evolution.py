@@ -1,4 +1,4 @@
-import torch
+import numpy as np
 from src.evolution import Population
 from src.model import CreatureBrain
 
@@ -14,9 +14,9 @@ def test_mutate_modifies_parameters():
     model = pop.models[0]
     mutated = pop.mutate(model)
 
-    p1 = list(model.parameters())[0].detach()
-    p2 = list(mutated.parameters())[0].detach()
-    assert not torch.equal(p1, p2)
+    p1 = model.parameters()[0]
+    p2 = mutated.parameters()[0]
+    assert not np.array_equal(p1, p2)
 
 
 def test_crossover_blends_parents():
@@ -26,6 +26,8 @@ def test_crossover_blends_parents():
 
     child = pop.crossover(parent1, parent2)
     assert child is not None
+    for c, a, b in zip(child.parameters(), parent1.parameters(), parent2.parameters()):
+        assert np.all((c == a) | (c == b))
 
 
 def test_evolve_maintains_population_size():

@@ -65,7 +65,8 @@ Goal is x=4000. The creature has to actually learn to handle slope changes, not 
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt   # server + training (flask, gunicorn, numpy, pymunk)
+pip install pygame matplotlib     # optional: local pygame viewer and plots (or: pip install -e .[viz])
 ```
 
 **Run the best saved model:**
@@ -115,7 +116,7 @@ Free tier heads-up: it sleeps after ~15 min idle (~1 min cold start), and there'
 | Piece | Why |
 | --- | --- |
 | **Pymunk** | 2D rigid body physics - fast, no GPU needed |
-| **PyTorch** | Neural net weights + crossover/mutation ops |
+| **NumPy** | The brain is 324 weights: two matmuls + `tanh`, plus crossover/mutation on plain arrays. No deep learning framework needed |
 | **Flask + SSE** | Real-time browser streaming without WebSockets |
 | **Python multiprocessing** | Parallel rollout evaluation across CPU cores |
 | **Matplotlib** | Training curve visualization |
@@ -145,7 +146,7 @@ src/
   environment.py   - Pymunk physics world, creature construction, reward logic
   evolution.py     - Population class, crossover, mutation, rollout dispatch
   model.py         - CreatureBrain (15→16→4 tanh network)
-models/            - Saved checkpoints (best_model.pth, top_0..4.pth)
+models/            - Saved checkpoints (best_model.npz, top_0..4.npz)
 logs/              - Training history CSVs and evolution.log
 templates/         - Flask HTML templates for the web dashboard
 scripts/           - plot_logs.py, other utilities

@@ -3,7 +3,7 @@
 ## Workspace Directory Structure
 
 - **`src/`**: Core python modules (`environment.py`, `evolution.py`, `model.py`).
-- **`models/`**: Saved PyTorch model checkpoints (`best_model.pth`, `top_0.pth` ... `top_4.pth`).
+- **`models/`**: Saved NumPy model checkpoints (`best_model.npz`, `top_0.npz` ... `top_4.npz`).
 - **`logs/`**: Training logs and metrics (`history.csv`, `evolution.log`).
 - **`templates/`**: Web application HTML templates (`index.html`).
 - **`tests/`**: Pytest test suite (`test_environment.py`).
@@ -12,9 +12,9 @@
 
 ## Model & File Location Rules
 
-1. **Model Checkpoints**: Always save and load model checkpoints inside the `models/` directory (e.g. `models/best_model.pth`, `models/top_X.pth`).
+1. **Model Checkpoints**: Always save and load model checkpoints inside the `models/` directory (e.g. `models/best_model.npz`, `models/top_X.npz`).
 2. **Logs & Metrics**: Always output training logs, metrics CSVs, and progress reports inside `logs/`.
-3. **No Root Pollution**: Do not leave transient `.pth` or `.log` files sitting in the repository root directory.
+3. **No Root Pollution**: Do not leave transient `.npz` or `.log` files sitting in the repository root directory.
 
 ## Ponytail / Senior Developer Principles
 
