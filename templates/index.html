@@ -860,7 +860,7 @@
       const frames = replay.frames;
       const n = frames.length;
       const period = (n - 1) / replay.fps + REPLAY_PAUSE_S;
-      const t = (((now - playT0) / 1000) % period) * replay.fps;
+      const t = ((Math.max(0, now - playT0) / 1000) % period) * replay.fps; // rAF's frame time can predate playT0
       const i = Math.min(n - 1, Math.floor(t));
       if (i !== lastFrameIdx) {
         if (i < lastFrameIdx) snapCamera = true; // looped back to the start
