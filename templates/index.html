@@ -991,10 +991,10 @@
         ctx.fillText(`${x - spawnX}px`, x - 15, gy + 25);
       }
 
-      // Start / goal markers
+      // Start / end-of-ground markers
       ctx.strokeStyle = '#eab308';
       ctx.fillStyle = '#eab308';
-      [[spawnX, 'START'], [replay ? replay.goal_x : 4000, 'GOAL']].forEach(([x, text]) => {
+      [[spawnX, 'START'], [replay ? replay.end_x : 3000, 'END']].forEach(([x, text]) => {
         const gy = groundY(x) ?? 495;
         ctx.beginPath();
         ctx.moveTo(x, gy);
@@ -1139,8 +1139,8 @@
       scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(minor), new THREE.LineBasicMaterial({ color: 0x52525b })));
       scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(major), new THREE.LineBasicMaterial({ color: 0xd4d4d8 })));
 
-      // Start / goal posts on the far edge
-      [[spawnX, 'START'], [replay ? replay.goal_x : 4000, 'GOAL']].forEach(([x, text]) => {
+      // Start / end-of-ground posts on the far edge
+      [[spawnX, 'START'], [replay ? replay.end_x : 3000, 'END']].forEach(([x, text]) => {
         const gy = -(groundY(x) ?? 495);
         const post = new THREE.Mesh(new THREE.BoxGeometry(3, 80, 3), new THREE.MeshBasicMaterial({ color: 0xeab308 }));
         post.position.set(x, gy + 40, -HALF + 2);
@@ -1297,7 +1297,7 @@
         const data = await res.json();
         if (data.best_fitness != null) {
           document.getElementById('valUnivRecord').textContent = data.best_fitness.toFixed(1);
-          document.getElementById('subUnivMeta').textContent = `Gen ${data.generation} • ${data.fitness_mode || 'baseline'}`;
+          document.getElementById('subUnivMeta').textContent = `${data.generation != null ? 'Gen ' + data.generation : 'Re-scored'} • ${data.fitness_mode || 'baseline'}`;
         }
       } catch (e) {}
     }

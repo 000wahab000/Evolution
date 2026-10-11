@@ -16,6 +16,8 @@ Each generation, the top 5 performers survive. The rest of the population is bre
 
 The training signal is dead simple: **go right, don't fall**.
 
+**Learning the codebase?** Start with [docs/LEARNING.md](docs/LEARNING.md): one module per layer (NumPy brain, physics, reward, evolution, parallelism, web, 3D, deploy), with study links and questions to check you can explain each part.
+
 ### How the state space works
 
 The 15 network inputs at each timestep:
@@ -54,11 +56,12 @@ Mutation: per-parameter random mask (rate 0.15) with Gaussian noise (scale 0.35)
 
 ## The terrain
 
-Flat ground from spawn to x=600. Then:
+Flat ground from spawn (x=400) to x=600. Then, as `terrain_changing()` builds it today:
 - **Uphill** from x=600 to x=1600 (40px rise over 1000px)
-- **Downhill** from x=1600 to x=2600 (40px drop over 1000px)
+- A 40px drop at x=1600, then a **second uphill** to x=2600 (meant to be a downhill: the second segment reuses the uphill's formula)
+- Another 40px drop at x=2600 back to the flat ground, which ends at x=3000
 
-Goal is x=4000. The creature has to actually learn to handle slope changes, not just walk on flat ground.
+There's no goal check in the env: an episode ends after 600 steps, a fall, or getting stuck. The best walker currently reaches about x=900, partway up the first hill.
 
 ---
 
