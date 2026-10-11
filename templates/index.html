@@ -14,14 +14,30 @@
       --bg: #09090b;
       --card-bg: #121214;
       --border: #27272a;
-      --border-light: #3f3f46;
+      --border-light: #71717a; /* 3:1 vs card/input bg so input boundaries are visible */
       --text-main: #fafafa;
-      --text-muted: #71717a;
+      --text-muted: #82828b; /* >= 4.5:1 on every panel background */
       --text-sub: #a1a1aa;
       --green: #22c55e;
       --yellow: #eab308;
-      --red: #ef4444;
+      --red: #dc2626; /* white label needs >= 4.5:1 */
       --blue: #3b82f6;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--yellow);
+      outline-offset: 2px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     body {
@@ -41,6 +57,8 @@
     /* Top Navigation Header */
     header {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
       justify-content: space-between;
       align-items: center;
       padding-bottom: 1.25rem;
@@ -145,6 +163,8 @@
 
     .panel-header {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 1rem;
@@ -254,6 +274,8 @@
 
     .viewport-footer {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       justify-content: space-between;
       align-items: center;
       margin-top: 0.75rem;
@@ -262,6 +284,7 @@
     /* Buttons & Model Selectors */
     .btn-group {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.35rem;
     }
 
@@ -331,8 +354,17 @@
       flex: 1;
     }
     .btn-action-stop:hover:not(:disabled) {
-      background: #dc2626;
-      border-color: #dc2626;
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+
+    .demo-note {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--yellow);
+      border-radius: 4px;
+      color: var(--yellow);
+      font-size: 0.75rem;
     }
 
     /* Controls Panel */
@@ -361,17 +393,12 @@
 
     .form-field input, .form-field select {
       background: #09090b;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-light);
       color: #ffffff;
       padding: 0.5rem 0.65rem;
       border-radius: 4px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.8rem;
-      outline: none;
-    }
-
-    .form-field input:focus, .form-field select:focus {
-      border-color: var(--border-light);
     }
 
     .form-field input[type="range"] {
@@ -399,6 +426,7 @@
     /* Tabbed Lower Section */
     .tabs-bar {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.5rem;
       border-bottom: 1px solid var(--border);
       margin-bottom: 1rem;
@@ -468,6 +496,23 @@
 
     .download-name { font-weight: 600; color: #ffffff; font-size: 0.8rem; }
     .download-desc { font-size: 0.7rem; color: var(--text-muted); }
+
+    /* Small screens + touch: 40px targets, no horizontal scroll */
+    @media (max-width: 600px), (pointer: coarse) {
+      .btn, .tab-btn, .form-field input, .form-field select { min-height: 40px; }
+      .btn-sm { min-width: 40px; }
+      a.btn { display: inline-flex; align-items: center; }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      .motor-telemetry { grid-template-columns: repeat(2, 1fr); }
+      .viewport-tools { top: auto; bottom: 10px; } /* keep clear of the HUD chips */
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -475,18 +520,20 @@
     <header>
       <div class="brand">
         <div>
-          <div class="brand-title">EVOLUTION-1 LOCOMOTION LAB</div>
+          <h1 class="brand-title">EVOLUTION-1 LOCOMOTION LAB</h1>
           <div class="brand-subtitle">Quadruped Physics Engine • Multi-Core Genetic Algorithm</div>
         </div>
       </div>
-      <div class="header-status">
+      <div class="header-status" role="status">
         <div class="status-indicator idle" id="statusIndicator"></div>
         <span id="statusText">System Ready</span>
       </div>
     </header>
 
+    <main>
     <!-- Top Metrics KPI Row -->
-    <div class="metrics-row">
+    <section class="metrics-row" aria-labelledby="metricsTitle">
+      <h2 class="sr-only" id="metricsTitle">Key Metrics</h2>
       <div class="metric-card">
         <div class="metric-label">Universal Record</div>
         <div class="metric-value" id="valUnivRecord">—</div>
@@ -497,33 +544,34 @@
         <div class="metric-value" id="valGenProgress">0 / 0</div>
         <div class="metric-sub" id="subTrainStatus">Idle</div>
       </div>
-      <div class="metric-card">
+      <div class="metric-card" aria-live="polite" aria-atomic="true">
         <div class="metric-label">Best Active Fitness</div>
         <div class="metric-value" id="valBestFitness">—</div>
-        <div class="metric-sub" id="subAvgFitness">Avg: —</div>
+        <div class="metric-sub" id="subAvgFitness" aria-live="off">Avg: —</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Population Diversity</div>
         <div class="metric-value" id="valDiversity">—</div>
         <div class="metric-sub">Weight Variance σ</div>
       </div>
-    </div>
+    </section>
 
     <!-- Workbench Grid -->
     <div class="workbench-grid">
       <!-- Left: Simulation Viewport -->
-      <div class="panel">
+      <section class="panel" aria-labelledby="simTitle">
         <div class="panel-header">
-          <div class="panel-title">Physics Simulation</div>
-          <div class="btn-group">
-            <button class="btn active" data-model="universal" onclick="switchModel('universal')">Universal Best</button>
-            <button class="btn" data-model="best" onclick="switchModel('best')">Session Best</button>
-            <button class="btn" data-model="random" onclick="switchModel('random')">Random (Untrained)</button>
+          <h2 class="panel-title" id="simTitle">Physics Simulation</h2>
+          <div class="btn-group" role="group" aria-label="Model to simulate">
+            <button class="btn active" data-model="universal" aria-pressed="true" onclick="switchModel('universal')">Universal Best</button>
+            <button class="btn" data-model="best" aria-pressed="false" onclick="switchModel('best')">Session Best</button>
+            <button class="btn" data-model="random" aria-pressed="false" onclick="switchModel('random')">Random (Untrained)</button>
           </div>
         </div>
 
         <div class="viewport" id="viewport">
-          <canvas id="simCanvas"></canvas>
+          <canvas id="simCanvas" role="img" aria-label="Live 2D physics simulation: a quadruped walker (white torso, blue rear legs, green front legs) moving right along a ground line marked in pixels"></canvas>
+          <p class="sr-only" id="simSummary">Waiting for the simulation stream.</p>
           <div class="viewport-hud">
             <div class="hud-chip">Distance: <strong id="hudDistance">0.0 px (0.00 m)</strong></div>
             <div class="hud-chip">Velocity: <strong id="hudSpeed">0.0 px/s</strong></div>
@@ -531,9 +579,9 @@
             <div class="hud-chip">Step: <strong id="hudStep">0 / 600</strong></div>
           </div>
           <div class="viewport-tools">
-            <button class="btn btn-sm" onclick="zoom(1.2)" title="Zoom In">+</button>
-            <button class="btn btn-sm" onclick="zoom(0.8)" title="Zoom Out">-</button>
-            <button class="btn btn-sm" onclick="resetZoom()" title="Reset Camera">1x</button>
+            <button class="btn btn-sm" onclick="zoom(1.2)" title="Zoom In" aria-label="Zoom in">+</button>
+            <button class="btn btn-sm" onclick="zoom(0.8)" title="Zoom Out" aria-label="Zoom out">-</button>
+            <button class="btn btn-sm" onclick="resetZoom()" title="Reset Camera" aria-label="Reset zoom to 1x">1x</button>
           </div>
         </div>
 
@@ -559,32 +607,33 @@
 
         <div class="viewport-footer">
           <span style="color:var(--text-muted); font-size:0.75rem;">60 FPS Client-Side Pymunk Telemetry Stream</span>
-          <button class="btn btn-sm" onclick="reconnectStream()">↺ Reset Stream</button>
+          <button class="btn btn-sm" onclick="reconnectStream()"><span aria-hidden="true">↺</span> Reset Stream</button>
         </div>
-      </div>
+      </section>
 
       <!-- Right: Evolution Controller -->
-      <div class="panel">
+      <section class="panel" aria-labelledby="trainTitle">
         <div class="panel-header">
-          <div class="panel-title">Training Controller</div>
+          <h2 class="panel-title" id="trainTitle">Training Controller</h2>
           <span style="color:var(--text-muted); font-size:0.75rem;">Multiprocessing Engine</span>
         </div>
 
+        <!-- Readout spans are aria-hidden: the inputs already expose their values -->
         <div class="form-grid">
           <div class="form-field">
-            <label>Generations <span id="lblGens">50</span></label>
-            <input type="number" id="inpGens" value="50" min="5" max="1000" onchange="document.getElementById('lblGens').textContent = this.value" />
+            <label for="inpGens">Generations <span id="lblGens" aria-hidden="true">50</span></label>
+            <input type="number" id="inpGens" value="50" min="5" max="1000" oninput="document.getElementById('lblGens').textContent = this.value" />
           </div>
           <div class="form-field">
-            <label>Pop Size <span id="lblPop">50</span></label>
-            <input type="number" id="inpPop" value="50" min="10" max="500" onchange="document.getElementById('lblPop').textContent = this.value" />
+            <label for="inpPop">Pop Size <span id="lblPop" aria-hidden="true">50</span></label>
+            <input type="number" id="inpPop" value="50" min="10" max="500" oninput="document.getElementById('lblPop').textContent = this.value" />
           </div>
           <div class="form-field full">
-            <label>Mutation Rate <span id="lblMutation">0.15</span></label>
+            <label for="inpMutation">Mutation Rate <span id="lblMutation" aria-hidden="true">0.15</span></label>
             <input type="range" id="inpMutation" min="0.01" max="0.50" step="0.01" value="0.15" oninput="document.getElementById('lblMutation').textContent = this.value" />
           </div>
           <div class="form-field full">
-            <label>Fitness Function Mode</label>
+            <label for="inpMode">Fitness Function Mode</label>
             <select id="inpMode">
               <option value="baseline">Baseline (Forward Speed)</option>
               <option value="ground_termination" selected>Ground Termination (Fall Penalty)</option>
@@ -596,66 +645,69 @@
         </div>
 
         <div class="btn-group" style="margin-top:1.25rem">
-          <button class="btn btn-action-start" id="btnStart" onclick="startTraining()">▶ Run Evolution</button>
-          <button class="btn btn-action-pause" id="btnPause" onclick="togglePause()" disabled>⏸ Pause</button>
-          <button class="btn btn-action-stop" id="btnStop" onclick="stopTraining()" disabled>⏹ Stop</button>
+          <button class="btn btn-action-start" id="btnStart" onclick="startTraining()"><span aria-hidden="true">▶</span> Run Evolution</button>
+          <button class="btn btn-action-pause" id="btnPause" onclick="togglePause()" disabled><span aria-hidden="true">⏸</span> Pause</button>
+          <button class="btn btn-action-stop" id="btnStop" onclick="stopTraining()" disabled><span aria-hidden="true">⏹</span> Stop</button>
         </div>
+        <p class="demo-note" id="demoNote" hidden>Demo mode: training is disabled on this deployment, so Run Evolution is unavailable. You can still watch the saved models in the simulation.</p>
 
         <div class="progress-bar-container">
           <div class="progress-bar-fill" id="trainProgress"></div>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Lower Section: Tabs (Analytics, Live Logs, Checkpoints) -->
-    <div class="panel">
-      <div class="tabs-bar">
-        <button class="tab-btn active" onclick="switchTab('chart')">📈 Convergence & Diversity</button>
-        <button class="tab-btn" onclick="switchTab('logs')">📜 Live Evolution Logs</button>
-        <button class="tab-btn" onclick="switchTab('models')">💾 Model Checkpoints</button>
+    <section class="panel" aria-labelledby="analyticsTitle">
+      <h2 class="sr-only" id="analyticsTitle">Training Analytics</h2>
+      <div class="tabs-bar" role="tablist" aria-labelledby="analyticsTitle">
+        <button class="tab-btn active" role="tab" id="tabbtn-chart" data-tab="chart" aria-selected="true" aria-controls="tab-chart" onclick="switchTab('chart')"><span aria-hidden="true">📈</span> Convergence &amp; Diversity</button>
+        <button class="tab-btn" role="tab" id="tabbtn-logs" data-tab="logs" aria-selected="false" aria-controls="tab-logs" tabindex="-1" onclick="switchTab('logs')"><span aria-hidden="true">📜</span> Live Evolution Logs</button>
+        <button class="tab-btn" role="tab" id="tabbtn-models" data-tab="models" aria-selected="false" aria-controls="tab-models" tabindex="-1" onclick="switchTab('models')"><span aria-hidden="true">💾</span> Model Checkpoints</button>
       </div>
 
       <!-- Tab 1: Chart -->
-      <div class="tab-content active" id="tab-chart">
+      <div class="tab-content active" id="tab-chart" role="tabpanel" aria-labelledby="tabbtn-chart" tabindex="0">
         <div class="chart-panel">
-          <canvas id="fitnessChart"></canvas>
+          <canvas id="fitnessChart" role="img" aria-label="Line chart of best fitness, average fitness and population diversity (x100) per generation"></canvas>
         </div>
       </div>
 
       <!-- Tab 2: Logs -->
-      <div class="tab-content" id="tab-logs">
-        <div class="terminal-box" id="logTerminal">
+      <div class="tab-content" id="tab-logs" role="tabpanel" aria-labelledby="tabbtn-logs">
+        <div class="terminal-box" id="logTerminal" role="log" aria-label="Evolution log" tabindex="0">
           <div class="terminal-line">Connecting to evolution log stream...</div>
         </div>
       </div>
 
       <!-- Tab 3: Model Checkpoints -->
-      <div class="tab-content" id="tab-models">
+      <div class="tab-content" id="tab-models" role="tabpanel" aria-labelledby="tabbtn-models">
         <div class="downloads-grid">
           <div class="download-card">
             <div>
               <div class="download-name">universal_best.pth</div>
               <div class="download-desc">All-time record genome</div>
             </div>
-            <a href="/api/models/download/universal_best.pth" class="btn btn-sm">Download</a>
+            <a href="/api/models/download/universal_best.pth" class="btn btn-sm">Download<span class="sr-only"> universal_best.pth</span></a>
           </div>
           <div class="download-card">
             <div>
               <div class="download-name">best_model.pth</div>
               <div class="download-desc">Current session best</div>
             </div>
-            <a href="/api/models/download/best_model.pth" class="btn btn-sm">Download</a>
+            <a href="/api/models/download/best_model.pth" class="btn btn-sm">Download<span class="sr-only"> best_model.pth</span></a>
           </div>
           <div class="download-card">
             <div>
               <div class="download-name">top_0.pth</div>
               <div class="download-desc">Gen champion</div>
             </div>
-            <a href="/api/models/download/top_0.pth" class="btn btn-sm">Download</a>
+            <a href="/api/models/download/top_0.pth" class="btn btn-sm">Download<span class="sr-only"> top_0.pth</span></a>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+    </main>
   </div>
 
   <script>
@@ -667,6 +719,13 @@
     let currentFrame = null;
     let smoothCamX = 400;
     let currentZoom = 1.0;
+    let lastSummaryAt = 0;
+
+    // Only write when changed, so live regions don't re-announce identical text on every poll
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el.textContent !== text) el.textContent = text;
+    }
 
     function resizeCanvas() {
       canvas.width = canvas.parentElement.clientWidth;
@@ -693,6 +752,7 @@
           currentFrame = data;
           updateHUD(data);
           updateMotorTelemetry(data.actions);
+          updateSimSummary(data);
         } catch (e) {}
       };
 
@@ -704,7 +764,9 @@
     function switchModel(model) {
       currentModel = model;
       document.querySelectorAll('.btn[data-model]').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-model') === model);
+        const on = b.getAttribute('data-model') === model;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on);
       });
       connectStream(model);
     }
@@ -720,6 +782,16 @@
       document.getElementById('hudSpeed').textContent = (data.velocity_x || 0).toFixed(1) + ' px/s';
       document.getElementById('hudAngle').textContent = (data.angle || 0).toFixed(2) + ' rad';
       document.getElementById('hudStep').textContent = `${data.steps || 0} / 600`;
+    }
+
+    // Text alternative for the canvas; throttled to 1/s and deliberately not aria-live (it never stops changing)
+    function updateSimSummary(data) {
+      const now = performance.now();
+      if (now - lastSummaryAt < 1000) return;
+      lastSummaryAt = now;
+      const model = document.querySelector('.btn[data-model].active').textContent;
+      const meters = (data.distance_meters || (data.distance || 0) * 0.02).toFixed(2);
+      setText('simSummary', `${model} model: ${meters} m travelled, step ${data.steps || 0} of 600, ${data.fallen ? 'fallen' : 'upright'}.`);
     }
 
     function updateMotorTelemetry(actions) {
@@ -768,7 +840,7 @@
         ctx.stroke();
 
         // Ground Distance Ticks
-        ctx.fillStyle = '#71717a';
+        ctx.fillStyle = '#82828b';
         ctx.font = '11px JetBrains Mono';
         const startX = Math.floor((smoothCamX - (canvas.width / currentZoom)) / 100) * 100;
         const endX = smoothCamX + (canvas.width / currentZoom);
@@ -836,12 +908,27 @@
     // ── Tab Switcher ──────────────────────────────────────────────────────────
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tabId));
+        const on = btn.dataset.tab === tabId;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', on);
+        btn.tabIndex = on ? 0 : -1;
       });
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       const activeEl = document.getElementById(`tab-${tabId}`);
       if (activeEl) activeEl.classList.add('active');
     }
+
+    // Arrow/Home/End move between tabs (WAI-ARIA tabs pattern)
+    document.querySelector('.tabs-bar').addEventListener('keydown', e => {
+      const tabs = [...document.querySelectorAll('.tab-btn')];
+      const i = tabs.indexOf(document.activeElement);
+      const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (i < 0 || next === undefined) return;
+      e.preventDefault();
+      const tab = tabs[(next + tabs.length) % tabs.length];
+      tab.focus();
+      switchTab(tab.dataset.tab);
+    });
 
     // ── Training State & API ──────────────────────────────────────────────────
     async function pollTrainingStatus() {
@@ -853,28 +940,28 @@
         const btnPause = document.getElementById('btnPause');
         const btnStop = document.getElementById('btnStop');
         const indicator = document.getElementById('statusIndicator');
-        const text = document.getElementById('statusText');
 
         if (state.is_training) {
           btnStart.disabled = true;
           btnPause.disabled = false;
           btnStop.disabled = false;
-          btnPause.textContent = state.paused ? '▶ Resume' : '⏸ Pause';
+          const pauseHtml = state.paused ? '<span aria-hidden="true">▶</span> Resume' : '<span aria-hidden="true">⏸</span> Pause';
+          if (btnPause.innerHTML !== pauseHtml) btnPause.innerHTML = pauseHtml;
 
           indicator.className = state.paused ? 'status-indicator paused' : 'status-indicator running';
-          text.textContent = state.paused ? 'Evolution Paused' : `Evolving Gen ${state.current_generation} / ${state.total_generations}`;
+          setText('statusText', state.paused ? 'Evolution Paused' : `Evolving Gen ${state.current_generation} / ${state.total_generations}`);
 
-          document.getElementById('valGenProgress').textContent = `${state.current_generation} / ${state.total_generations}`;
-          document.getElementById('subTrainStatus').textContent = state.paused ? 'Paused' : 'Running Rollouts';
+          setText('valGenProgress', `${state.current_generation} / ${state.total_generations}`);
+          setText('subTrainStatus', state.paused ? 'Paused' : 'Running Rollouts');
 
           if (state.best_fitness != null) {
-            document.getElementById('valBestFitness').textContent = state.best_fitness.toFixed(1);
+            setText('valBestFitness', state.best_fitness.toFixed(1));
           }
           if (state.avg_fitness != null) {
-            document.getElementById('subAvgFitness').textContent = `Avg: ${state.avg_fitness.toFixed(1)}`;
+            setText('subAvgFitness', `Avg: ${state.avg_fitness.toFixed(1)}`);
           }
           if (state.diversity_score != null) {
-            document.getElementById('valDiversity').textContent = state.diversity_score.toFixed(4);
+            setText('valDiversity', state.diversity_score.toFixed(4));
           }
 
           const pct = Math.min(100, (state.current_generation / state.total_generations) * 100);
@@ -885,8 +972,11 @@
           btnPause.disabled = true;
           btnStop.disabled = true;
           indicator.className = 'status-indicator idle';
-          text.textContent = demoMode ? 'Demo mode: training disabled' : 'System Ready';
-          document.getElementById('subTrainStatus').textContent = 'Idle';
+          setText('statusText', demoMode ? 'Demo mode: training disabled' : 'System Ready');
+          setText('subTrainStatus', 'Idle');
+          document.getElementById('demoNote').hidden = !demoMode;
+          if (demoMode) btnStart.setAttribute('aria-describedby', 'demoNote');
+          else btnStart.removeAttribute('aria-describedby');
         }
       } catch (e) {}
     }
@@ -931,16 +1021,23 @@
       } catch (e) {}
     }
 
+    // Append only new lines so the role="log" region announces just what's new, not the whole tail.
+    let lastLogLine = null;
     async function fetchLogs() {
       try {
         const res = await fetch('/api/logs/tail');
         const lines = await res.json();
         if (!Array.isArray(lines) || lines.length === 0) return;
         const box = document.getElementById('logTerminal');
-        box.innerHTML = lines.map(l => {
+        const fresh = lines.slice(lines.lastIndexOf(lastLogLine) + 1);
+        if (fresh.length === 0) return;
+        if (lastLogLine === null) box.textContent = '';
+        box.insertAdjacentHTML('beforeend', fresh.map(l => {
           const isRec = l.includes('RECORD') || l.includes('UNIVERSAL');
           return `<div class="terminal-line ${isRec ? 'record' : ''}">${escapeHtml(l.trim())}</div>`;
-        }).join('');
+        }).join(''));
+        while (box.children.length > lines.length) box.firstElementChild.remove();
+        lastLogLine = lines[lines.length - 1];
         box.scrollTop = box.scrollHeight;
       } catch (e) {}
     }
@@ -1022,11 +1119,11 @@
               },
               scales: {
                 x: {
-                  ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
+                  ticks: { color: '#82828b', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
                   grid: { color: '#18181b' }
                 },
                 y: {
-                  ticks: { color: '#71717a', font: { family: 'JetBrains Mono', size: 10 } },
+                  ticks: { color: '#82828b', font: { family: 'JetBrains Mono', size: 10 } },
                   grid: { color: '#18181b' }
                 }
               }
@@ -1045,6 +1142,7 @@
     // Init
     connectStream('universal');
     render();
+    pollTrainingStatus();
     fetchBestMeta();
     fetchHistory();
     fetchLogs();
