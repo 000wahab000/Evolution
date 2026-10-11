@@ -78,3 +78,9 @@ def test_replay_static_route(client):
     assert response.cache_control.max_age > 0
     assert json.loads(response.data)["model"] == "best"
     response.close()
+
+
+def test_live_sim_disabled_in_demo_mode(client, monkeypatch):
+    monkeypatch.setitem(app_module.training_state, "training_enabled", False)
+    assert client.get("/api/stream/sim").status_code == 403
+    assert client.get("/api/random").status_code == 403

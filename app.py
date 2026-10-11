@@ -14,8 +14,8 @@ from src.model import CreatureBrain
 from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
 
 app = Flask(__name__)
-# static/ holds the recorded replays (scripts/record_replay.py); they only change on deploy
-app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
+# static/ holds the recorded replays (scripts/record_replay.py); short cache so a redeploy shows up quickly
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 300
 
 # Global Training State
 training_lock = threading.Lock()
@@ -167,6 +167,8 @@ def get_best():
 
 @app.route("/api/random")
 def get_random():
+    if not training_state["training_enabled"]:
+        return jsonify({"message": "Live simulation is disabled on this server"}), 403
     try:
         model = CreatureBrain()
         env = CreatureEnv(fitness_mode="baseline")
@@ -231,6 +233,9 @@ def stop_training():
 
 @app.route("/api/stream/sim")
 def stream_simulation():
+    # Each stream pins a gunicorn thread forever; the public demo plays recorded replays instead
+    if not training_state["training_enabled"]:
+        return jsonify({"message": "Live simulation is disabled on this server"}), 403
     model_type = request.args.get("model", "best")  # 'best', 'universal', 'top_0', 'random'
 
     def generate():
