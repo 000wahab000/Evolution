@@ -5,8 +5,7 @@ FROM python:${PYTHON_VERSION}-slim AS base
 
 # Prevents Python from writing pyc files and keeps stdout/stderr unbuffered.
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    SDL_VIDEODRIVER=dummy
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
