@@ -28,7 +28,6 @@ OUT_DIR = os.path.join(ROOT, "static", "replays")
 MAX_STEPS = 600  # same cap as /api/stream/sim
 FPS = 45  # the stream's frame rate
 SPAWN_X = 400.0
-GOAL_X = 4000.0  # README's goal; the env itself has no goal check
 FIELDS = ["tx", "ty", "ta"] + [f"l{i}{k}" for i in range(4) for k in "xya"] + ["a0", "a1", "a2", "a3", "vx"]
 
 
@@ -78,6 +77,7 @@ def record(name, weights):
     if fallen:
         fitness -= 100.0  # same penalty as evaluate_genome
 
+    terrain = terrain_polyline(env)
     return {
         "model": name,
         "fitness": round(fitness, 2),
@@ -86,10 +86,10 @@ def record(name, weights):
         "steps": steps,
         "fps": FPS,
         "spawn_x": SPAWN_X,
-        "goal_x": GOAL_X,
+        "end_x": max(x for x, _ in terrain),  # the ground ends here; the env has no goal check
         "torso": [60, 20],
         "leg": [10, 40],
-        "terrain": terrain_polyline(env),
+        "terrain": terrain,
         "recorded_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "fields": FIELDS,
         "frames": frames,

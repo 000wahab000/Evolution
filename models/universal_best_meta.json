@@ -1,8 +1,9 @@
 {
-  "best_fitness": 1155.3031186446349,
-  "generation": 132,
-  "fitness_mode": "ground_termination",
+  "best_fitness": 997.3880180049357,
+  "generation": null,
+  "fitness_mode": "baseline",
   "pop_size": 50,
   "mutation_rate": 0.15,
-  "saved_at": "2026-08-31 02:57:56"
+  "saved_at": "2026-10-11 17:02:22",
+  "note": "best_model promoted and re-scored. The old 1155 record was set on 2026-08-31, before the slopes were added (2026-09-12), and scores 18.3 on today's terrain."
 }
