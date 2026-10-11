@@ -55,3 +55,26 @@ def test_training_start_disabled(client, monkeypatch):
     response = client.post("/api/training/start", json={})
     assert response.status_code == 403
     assert app_module.training_state["is_training"] is False
+
+
+REPLAY_MODELS = ["best", "universal", "random"]  # the dashboard's model switcher
+
+
+@pytest.mark.parametrize("model", REPLAY_MODELS)
+def test_replay_files(model):
+    from scripts.record_replay import FIELDS, OUT_DIR
+
+    with open(f"{OUT_DIR}/{model}.json", encoding="utf-8") as f:
+        replay = json.load(f)
+    assert replay["fields"] == FIELDS
+    assert 0 < len(replay["frames"]) == replay["steps"] <= 600
+    assert all(len(frame) == len(FIELDS) for frame in replay["frames"])
+    assert len(replay["terrain"]) >= 2
+
+
+def test_replay_static_route(client):
+    response = client.get("/static/replays/best.json")
+    assert response.status_code == 200
+    assert response.cache_control.max_age > 0
+    assert json.loads(response.data)["model"] == "best"
+    response.close()

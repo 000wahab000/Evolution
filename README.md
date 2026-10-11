@@ -62,6 +62,16 @@ Goal is x=4000. The creature has to actually learn to handle slope changes, not 
 
 ---
 
+## 3D view
+
+The physics is still 2D. The dashboard draws it in 3D with [Three.js](https://threejs.org/) (0.160.1 from jsDelivr, no build step): torso and leg boxes, the terrain extruded into a strip with distance ticks every 100 px, and a follow camera. The legs are spread across depth so the pairs read as a quadruped. If WebGL is unavailable it falls back to the 2D canvas, and the 3D/2D button switches between them.
+
+What it plays is a **recorded replay**, not a live simulation. The physics is chaotic: a 1e-6 difference in the network's forward pass (different CPU or BLAS kernel) makes the same brain walk differently, so a server can't be trusted to reproduce a walk you checked locally. `scripts/record_replay.py` runs one episode per dashboard model (`best`, `universal`, `random` with a fixed seed) and writes `static/replays/<model>.json` (about 76 KB each). Visitors download that file once and the browser plays it back, so the server does no simulation per viewer. Re-run the script after training and commit the output.
+
+When training is enabled (`TRAINING_ENABLED=1`, the local default), a **Live (server)** button also streams the episode from `/api/stream/sim`. The public demo never opens that stream.
+
+---
+
 ## Quick start
 
 ```bash
@@ -79,10 +89,15 @@ python main.py --render
 python main.py --train --gens 100 --pop 50 --workers 4
 ```
 
-**Live web dashboard** (60fps canvas, SSE stream, start/pause/tune from browser):
+**Web dashboard** (3D replay view, start/pause/tune training from the browser):
 ```bash
 python app.py
 # open http://localhost:8000
+```
+
+**Refresh the dashboard replays** after training (writes `static/replays/*.json`, commit them):
+```bash
+python scripts/record_replay.py
 ```
 
 **Plot training history:**
@@ -149,7 +164,8 @@ src/
 models/            - Saved checkpoints (best_model.npz, top_0..4.npz)
 logs/              - Training history CSVs and evolution.log
 templates/         - Flask HTML templates for the web dashboard
-scripts/           - plot_logs.py, other utilities
+static/replays/    - Recorded episodes the dashboard plays back (scripts/record_replay.py)
+scripts/           - plot_logs.py, record_replay.py, other utilities
 tests/             - pytest suite
 ```
 

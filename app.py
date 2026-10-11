@@ -14,6 +14,8 @@ from src.model import CreatureBrain
 from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
 
 app = Flask(__name__)
+# static/ holds the recorded replays (scripts/record_replay.py); they only change on deploy
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
 
 # Global Training State
 training_lock = threading.Lock()
@@ -281,7 +283,7 @@ def download_model(filename):
     if filename not in safe_names:
         return jsonify({"error": "Invalid model filename"}), 400
     models_dir = os.path.abspath("models")
-    return send_from_directory(models_dir, filename, as_attachment=True)
+    return send_from_directory(models_dir, filename, as_attachment=True, max_age=0)  # change during training
 
 
 @app.route("/api/logs/tail")
