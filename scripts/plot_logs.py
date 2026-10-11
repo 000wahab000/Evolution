@@ -2,10 +2,10 @@
 Plot and visualize evolutionary training progress from logs/evolution.log and logs/history.csv.
 
 Usage:
-    python plot_logs.py                # Plot latest training run and save PNG + HTML
-    python plot_logs.py --all-runs     # Compare all historical training sessions
-    python plot_logs.py --live         # Live monitor active training loop (refreshes every 2s)
-    python plot_logs.py --show         # Open interactive matplotlib window
+    python scripts/plot_logs.py                # Plot latest training run and save PNG + HTML
+    python scripts/plot_logs.py --all-runs     # Compare all historical training sessions
+    python scripts/plot_logs.py --live         # Live monitor active training loop (refreshes every 2s)
+    python scripts/plot_logs.py --show         # Open interactive matplotlib window
 """
 
 import argparse

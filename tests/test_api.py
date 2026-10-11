@@ -1,5 +1,6 @@
 import json
 import pytest
+import app as app_module
 from app import app
 
 
@@ -46,3 +47,11 @@ def test_api_training_status(client):
     assert "is_training" in data
     assert "population_size" in data
     assert "mutation_rate" in data
+    assert "training_enabled" in data
+
+
+def test_training_start_disabled(client, monkeypatch):
+    monkeypatch.setitem(app_module.training_state, "training_enabled", False)
+    response = client.post("/api/training/start", json={})
+    assert response.status_code == 403
+    assert app_module.training_state["is_training"] is False

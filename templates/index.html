@@ -880,11 +880,12 @@
           const pct = Math.min(100, (state.current_generation / state.total_generations) * 100);
           document.getElementById('trainProgress').style.width = pct + '%';
         } else {
-          btnStart.disabled = false;
+          const demoMode = state.training_enabled === false;
+          btnStart.disabled = demoMode;
           btnPause.disabled = true;
           btnStop.disabled = true;
           indicator.className = 'status-indicator idle';
-          text.textContent = 'System Ready';
+          text.textContent = demoMode ? 'Demo mode: training disabled' : 'System Ready';
           document.getElementById('subTrainStatus').textContent = 'Idle';
         }
       } catch (e) {}

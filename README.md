@@ -97,6 +97,19 @@ docker compose up --build
 
 ---
 
+## Deploy (Render)
+
+Runs as a Render web service straight from the `Dockerfile` (runtime: Docker, free plan). Render sets `PORT` and gunicorn binds to it.
+
+| Env var | What it does |
+| --- | --- |
+| `TRAINING_ENABLED` | `0` = watch-only public demo (start button is off, `/api/training/start` returns 403). `1` (default) lets you train from the dashboard. |
+| `TRAINING_WORKERS` | Process count for training. Default 4, use `1` on the free tier. |
+
+Free tier heads-up: it sleeps after ~15 min idle (~1 min cold start), and there's no persistent disk, so anything trained on the server resets on every deploy. The committed `models/` and `logs/` are what the demo shows.
+
+---
+
 ## Stack
 
 | Piece | Why |

@@ -34,5 +34,5 @@ USER appuser
 # Expose server port.
 EXPOSE 8000
 
-# Run with Gunicorn using threads for SSE streaming and disable unused control socket.
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "8", "--timeout", "120", "--no-control-socket"]
+# Run with Gunicorn on $PORT (Render sets it; defaults to 8000) using threads for SSE streaming and disable unused control socket.
+CMD ["sh", "-c", "exec gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 8 --timeout 120 --no-control-socket"]

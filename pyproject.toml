@@ -28,7 +28,7 @@ dev = [
 evolution-train = "main:main"
 
 [tool.setuptools]
-py-modules = ["app", "main", "plot_logs"]
+py-modules = ["app", "main"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -45,4 +45,3 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-norecursedirs = ["spinningup"]

@@ -28,7 +28,8 @@ training_state = {
     "population_size": 50,
     "mutation_rate": 0.15,
     "fitness_mode": "baseline",
-    "workers": 4,
+    "workers": int(os.environ.get("TRAINING_WORKERS", 4)),
+    "training_enabled": os.environ.get("TRAINING_ENABLED", "1") != "0",
     "paused": False,
     "error": None,
 }
@@ -196,6 +197,8 @@ def get_training_status():
 @app.route("/api/training/start", methods=["POST"])
 def start_training():
     global training_thread, training_state
+    if not training_state["training_enabled"]:
+        return jsonify({"message": "Training is disabled on this server"}), 403
     if training_state["is_training"]:
         return jsonify({"message": "Training already in progress"}), 400
 

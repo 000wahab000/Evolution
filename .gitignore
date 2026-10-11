@@ -19,3 +19,9 @@ env/
 node_modules/
 package-lock.json
 package.json
+
+# Generated plot outputs (scripts/plot_logs.py)
+logs/dashboard.html
+logs/evolution_graph.png
+assets/evolution_graph.png
+assets/evolution_all_runs.png

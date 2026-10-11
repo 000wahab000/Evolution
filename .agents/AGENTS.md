@@ -9,7 +9,6 @@
 - **`tests/`**: Pytest test suite (`test_environment.py`).
 - **`assets/`**: Media assets (GIFs, screenshots, diagrams).
 - **`docs/solutions/`**: Documented solutions to past technical challenges and bug fixes.
-- **`CONCEPTS.md`**: Shared domain vocabulary and simulation concepts.
 
 ## Model & File Location Rules
 
