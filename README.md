@@ -4,7 +4,7 @@ A 2D physics lab where creatures learn to walk through evolution, not backprop.
 
 No reinforcement learning frameworks. No PyTorch Lightning. No 40-package dependency hell. Just a genetic algorithm, a tiny neural net, and Pymunk doing all the heavy lifting.
 
-![Quadruped walking demo](assets/walking%20body.gif)
+![Quadruped walking demo](docs/media/walking.gif)
 
 ---
 
@@ -69,7 +69,7 @@ There's no goal check in the env: an episode ends after 600 steps, a fall, or ge
 
 The physics is still 2D. The dashboard draws it in 3D with [Three.js](https://threejs.org/) (0.160.1 from jsDelivr, no build step): torso and leg boxes, the terrain extruded into a strip with distance ticks every 100 px, and a follow camera. The legs are spread across depth so the pairs read as a quadruped. If WebGL is unavailable it falls back to the 2D canvas, and the 3D/2D button switches between them.
 
-What it plays is a **recorded replay**, not a live simulation. The physics is chaotic: a 1e-6 difference in the network's forward pass (different CPU or BLAS kernel) makes the same brain walk differently, so a server can't be trusted to reproduce a walk you checked locally. `scripts/record_replay.py` runs one episode per dashboard model (`best`, `universal`, `random` with a fixed seed) and writes `static/replays/<model>.json` (about 76 KB each). Visitors download that file once and the browser plays it back, so the server does no simulation per viewer. Re-run the script after training and commit the output.
+What it plays is a **recorded replay**, not a live simulation. The physics is chaotic: a 1e-6 difference in the network's forward pass (different CPU or BLAS kernel) makes the same brain walk differently, so a server can't be trusted to reproduce a walk you checked locally. `scripts/record_replay.py` runs one episode per dashboard model (`best`, `universal`, `random` with a fixed seed) and writes `web/static/replays/<model>.json` (about 76 KB each). Visitors download that file once and the browser plays it back, so the server does no simulation per viewer. Re-run the script after training and commit the output.
 
 When training is enabled (`TRAINING_ENABLED=1`, the local default), a **Live (server)** button also streams the episode from `/api/stream/sim`. The public demo never opens that stream.
 
@@ -98,7 +98,7 @@ python app.py
 # open http://localhost:8000
 ```
 
-**Refresh the dashboard replays** after training (writes `static/replays/*.json`, commit them):
+**Refresh the dashboard replays** after training (writes `web/static/replays/*.json`, commit them):
 ```bash
 python scripts/record_replay.py
 ```
@@ -125,7 +125,7 @@ Runs as a Render web service straight from the `Dockerfile` (runtime: Docker, fr
 | `TRAINING_ENABLED` | `0` = watch-only public demo (start button is off, `/api/training/start` returns 403). `1` (default) lets you train from the dashboard. |
 | `TRAINING_WORKERS` | Process count for training. Default 4, use `1` on the free tier. |
 
-Free tier heads-up: it sleeps after ~15 min idle (~1 min cold start), and there's no persistent disk, so anything trained on the server resets on every deploy. The committed `models/` and `logs/` are what the demo shows.
+Free tier heads-up: it sleeps after ~15 min idle (~1 min cold start), and there's no persistent disk, so anything trained on the server resets on every deploy. The committed `data/models/` and `data/logs/` are what the demo shows.
 
 ---
 
@@ -164,10 +164,11 @@ src/
   environment.py   - Pymunk physics world, creature construction, reward logic
   evolution.py     - Population class, crossover, mutation, rollout dispatch
   model.py         - CreatureBrain (15→16→4 tanh network)
-models/            - Saved checkpoints (best_model.npz, top_0..4.npz)
-logs/              - Training history CSVs and evolution.log
-templates/         - Flask HTML templates for the web dashboard
-static/replays/    - Recorded episodes the dashboard plays back (scripts/record_replay.py)
+data/models/       - Saved checkpoints (best_model.npz, top_0..4.npz)
+data/logs/         - Training history CSVs and evolution.log
+web/templates/     - Flask HTML template for the web dashboard
+web/static/replays/ - Recorded episodes the dashboard plays back (scripts/record_replay.py)
+docs/              - Study guide (LEARNING.md), strategy, plans, README media
 scripts/           - plot_logs.py, record_replay.py, other utilities
 tests/             - pytest suite
 ```

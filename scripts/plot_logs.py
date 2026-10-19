@@ -1,5 +1,5 @@
 """
-Plot and visualize evolutionary training progress from logs/evolution.log and logs/history.csv.
+Plot and visualize evolutionary training progress from data/logs/evolution.log and data/logs/history.csv.
 
 Usage:
     python scripts/plot_logs.py                # Plot latest training run and save PNG + HTML
@@ -21,7 +21,7 @@ if "SHOW_GUI" not in os.environ:
 import matplotlib.pyplot as plt
 
 
-def parse_log_file(log_path="logs/evolution.log"):
+def parse_log_file(log_path="data/logs/evolution.log"):
     """
     Parses evolution.log into distinct training sessions.
     Returns a list of sessions, each containing lists of:
@@ -82,7 +82,7 @@ def parse_log_file(log_path="logs/evolution.log"):
     return sessions
 
 
-def parse_history_csv(csv_path="logs/history.csv"):
+def parse_history_csv(csv_path="data/logs/history.csv"):
     """Parses current session from history.csv."""
     if not os.path.exists(csv_path):
         return None
@@ -115,7 +115,7 @@ def parse_history_csv(csv_path="logs/history.csv"):
     }
 
 
-def plot_single_run(session, output_png="assets/evolution_graph.png", show=False):
+def plot_single_run(session, output_png="data/logs/evolution_graph.png", show=False):
     """Generates a high-quality dual-pane plot for a training run."""
     os.makedirs(os.path.dirname(output_png), exist_ok=True)
 
@@ -190,16 +190,12 @@ def plot_single_run(session, output_png="assets/evolution_graph.png", show=False
     plt.savefig(output_png, dpi=150, facecolor=fig.get_facecolor(), edgecolor="none")
     print(f" Saved evolution plot to: {output_png}")
 
-    # Also save copy to logs/
-    logs_copy = os.path.join("logs", "evolution_graph.png")
-    plt.savefig(logs_copy, dpi=150, facecolor=fig.get_facecolor(), edgecolor="none")
-
     if show:
         plt.show()
     plt.close(fig)
 
 
-def plot_all_runs(sessions, output_png="assets/evolution_all_runs.png"):
+def plot_all_runs(sessions, output_png="data/logs/evolution_all_runs.png"):
     """Plots fitness progression curves for all historical training runs."""
     if not sessions:
         print("No sessions found to plot.")
@@ -240,7 +236,7 @@ def plot_all_runs(sessions, output_png="assets/evolution_all_runs.png"):
     plt.close(fig)
 
 
-def generate_interactive_html(session, output_html="logs/dashboard.html"):
+def generate_interactive_html(session, output_html="data/logs/dashboard.html"):
     """Creates a standalone interactive Chart.js HTML report."""
     os.makedirs(os.path.dirname(output_html), exist_ok=True)
 
@@ -412,16 +408,16 @@ def run_live_monitoring(interval=2):
     last_len = 0
     try:
         while True:
-            sessions = parse_log_file("logs/evolution.log")
+            sessions = parse_log_file("data/logs/evolution.log")
             if not sessions:
-                session = parse_history_csv("logs/history.csv")
+                session = parse_history_csv("data/logs/history.csv")
             else:
                 session = sessions[-1]
 
             if session and len(session["gens"]) != last_len:
                 last_len = len(session["gens"])
-                plot_single_run(session, "assets/evolution_graph.png")
-                generate_interactive_html(session, "logs/dashboard.html")
+                plot_single_run(session, "data/logs/evolution_graph.png")
+                generate_interactive_html(session, "data/logs/dashboard.html")
                 print(f"-> Updated telemetry: Gen {session['gens'][-1]} | Best: {session['best'][-1]:.2f}")
 
             time.sleep(interval)
@@ -431,12 +427,12 @@ def run_live_monitoring(interval=2):
 
 def main():
     parser = argparse.ArgumentParser(description="Evolutionary Training Progress Visualizer")
-    parser.add_argument("--log", default="logs/evolution.log", help="Path to evolution.log")
-    parser.add_argument("--csv", default="logs/history.csv", help="Path to history.csv")
+    parser.add_argument("--log", default="data/logs/evolution.log", help="Path to evolution.log")
+    parser.add_argument("--csv", default="data/logs/history.csv", help="Path to history.csv")
     parser.add_argument("--all-runs", action="store_true", help="Plot comparison of all historical runs")
     parser.add_argument("--live", action="store_true", help="Continuously refresh graphs while training")
     parser.add_argument("--show", action="store_true", help="Display interactive window")
-    parser.add_argument("--out", default="assets/evolution_graph.png", help="Output PNG path")
+    parser.add_argument("--out", default="data/logs/evolution_graph.png", help="Output PNG path")
     args = parser.parse_args()
 
     if args.live:
@@ -448,14 +444,14 @@ def main():
     latest_session = sessions[-1] if sessions else parse_history_csv(args.csv)
 
     if not latest_session:
-        print("No log or history data found in logs/.")
+        print("No log or history data found in data/logs/.")
         return
 
     if args.all_runs and len(sessions) > 1:
-        plot_all_runs(sessions, "assets/evolution_all_runs.png")
+        plot_all_runs(sessions, "data/logs/evolution_all_runs.png")
 
     plot_single_run(latest_session, output_png=args.out, show=args.show)
-    generate_interactive_html(latest_session, "logs/dashboard.html")
+    generate_interactive_html(latest_session, "data/logs/dashboard.html")
 
 
 if __name__ == "__main__":

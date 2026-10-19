@@ -19,14 +19,14 @@ Practise until you can say this in your own words and answer follow-ups on any s
 ```
             TRAINING (your laptop)                         DEMO (Render)
  main.py / app.py training thread                  browser loads index.html
-   Population (src/evolution.py)                     fetches static/replays/best.json
+   Population (src/evolution.py)                     fetches web/static/replays/best.json
      ├─ 50 × CreatureBrain (src/model.py)            plays frames with requestAnimationFrame
      └─ multiprocessing.Pool                         draws them with Three.js (3D) or canvas (2D)
           evaluate_genome() × 50 in parallel
             CreatureEnv (src/environment.py)       Flask (app.py) only serves files + small JSON
               Pymunk physics, reward, falls        TRAINING_ENABLED=0 → no training, no live sim
-   saves models/*.npz, logs/history.csv
- scripts/record_replay.py → static/replays/*.json  ← the bridge between the two
+   saves data/models/*.npz, data/logs/history.csv
+ scripts/record_replay.py → web/static/replays/*.json  ← the bridge between the two
 ```
 
 ---
@@ -162,7 +162,7 @@ There is **no backpropagation** here. The weights are only ever changed by evolu
 **Questions:**
 1. Trace `evolve()`: how many of the next 50 brains are unchanged elites, and how is each of the other 45 made?
 2. What would happen with `mutation_scale = 3.0`? With `0.001`?
-3. What does a falling `Diversity_Score` in `logs/history.csv` tell you? Why is diversity reaching zero bad?
+3. What does a falling `Diversity_Score` in `data/logs/history.csv` tell you? Why is diversity reaching zero bad?
 4. Why does keeping the elites unchanged guarantee the best fitness never goes *down* from one generation to the next, in a deterministic simulation?
 
 ---
@@ -232,7 +232,7 @@ This is the most surprising thing in the project.
 - gunicorn design (workers vs threads): https://docs.gunicorn.org/en/stable/design.html
 
 **Questions:**
-1. Trace what happens from clicking "Run Evolution" to a new row appearing in `logs/history.csv`.
+1. Trace what happens from clicking "Run Evolution" to a new row appearing in `data/logs/history.csv`.
 2. Why could 8 visitors take the whole site down if `/api/stream/sim` were public?
 3. Why is `training_enabled` read from an environment variable instead of being hard-coded?
 
@@ -240,7 +240,7 @@ This is the most surprising thing in the project.
 
 ## Module 9: The browser side (rendering, 3D, animation)
 
-**Read:** in `templates/index.html`, `loadReplay`, `replayPose`, `frameLoop`, `init3D` / `draw3D`, `draw2D`, and the polling code at the bottom. Also read `scripts/record_replay.py`.
+**Read:** in `web/templates/index.html`, `loadReplay`, `replayPose`, `frameLoop`, `init3D` / `draw3D`, `draw2D`, and the polling code at the bottom. Also read `scripts/record_replay.py`.
 
 **Concepts:**
 - **The DOM and `fetch()`.**
@@ -298,7 +298,7 @@ Do them roughly in this order. Each one is small, and each forces you to underst
 
 1. **Fix the downhill** (Modules 3 and 4). The second slope in `terrain_changing()` should descend, so swap its y formula. Re-run `python scripts/record_replay.py` and look at the terrain in the 3D view.
 2. **Write the forward pass in JavaScript** (Modules 1, 2 and 9). Load `best_model.npz` (or export its weights to JSON with a 5-line Python script) and reproduce `get_action` in the browser console. Check your 4 outputs against Python's for the same input.
-3. **Plot diversity against generation** from `logs/history.csv` (Module 5). Explain the shape of the curve.
+3. **Plot diversity against generation** from `data/logs/history.csv` (Module 5). Explain the shape of the curve.
 4. **Remove the CPG inputs** (set them to 0) and train for 30 generations (Module 4). Compare the best fitness with and without them, and explain the difference.
 5. **Make the fitness robust to noise** (Module 7): evaluate each genome over 3 slightly perturbed starts and average the results. Do the evolved gaits survive the NumPy/PyTorch kind of difference better?
 6. **Add a real goal** (Modules 3 and 4): end the episode with a bonus when `torso.position.x >= 2900`, and make `record_replay.py` mark it.

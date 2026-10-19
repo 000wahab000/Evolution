@@ -12,6 +12,8 @@ from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
 from src.utils import (
+    LOGS_DIR,
+    MODELS_DIR,
     UNIVERSAL_BEST_PATH,
     UNIVERSAL_META_PATH,
     atomic_save,
@@ -25,8 +27,8 @@ import multiprocessing
 
 
 def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15, workers=None):
-    os.makedirs("models", exist_ok=True)
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
 
     if workers is None:
         workers = os.cpu_count() or 4
@@ -41,7 +43,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
     )
     population = Population(CreatureBrain, pop_size=pop_size, mutation_rate=mutation_rate)
 
-    history_path = os.path.join("logs", "history.csv")
+    history_path = os.path.join(LOGS_DIR, "history.csv")
     with open(history_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
@@ -64,7 +66,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             if gen_best_fitness > best_overall_fitness:
                 best_overall_fitness = gen_best_fitness
                 best_overall_model = population.models[gen_best_idx]
-                atomic_save(best_overall_model.state_dict(), os.path.join("models", "best_model.npz"))
+                atomic_save(best_overall_model.state_dict(), os.path.join(MODELS_DIR, "best_model.npz"))
 
             # Save universal all-time best
             if gen_best_fitness > universal_best_fitness:
@@ -78,7 +80,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
                     mutation_rate,
                 )
                 logging.info(
-                    f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to models/universal_best.npz)"
+                    f"[UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: {gen_best_fitness:.2f} (Saved to data/models/universal_best.npz)"
                 )
 
             # Save top 5 of the current generation for rendering
@@ -86,7 +88,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             for idx_rank in range(min(5, len(population.models))):
                 atomic_save(
                     population.models[sorted_indices[idx_rank]].state_dict(),
-                    os.path.join("models", f"top_{idx_rank}.npz"),
+                    os.path.join(MODELS_DIR, f"top_{idx_rank}.npz"),
                 )
 
             fitnesses = np.array(population.fitnesses)
@@ -112,7 +114,7 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
             pool.join()
 
     logging.info(
-        f"Training complete. Session best: models/best_model.npz | Universal best: models/universal_best.npz ({universal_best_fitness:.2f})"
+        f"Training complete. Session best: data/models/best_model.npz | Universal best: data/models/universal_best.npz ({universal_best_fitness:.2f})"
     )
 
 
@@ -122,13 +124,13 @@ def render(render_universal=False):
     import pymunk.pygame_util
 
     universal_path = UNIVERSAL_BEST_PATH
-    top_0_path = os.path.join("models", "top_0.npz")
-    best_path = os.path.join("models", "best_model.npz")
+    top_0_path = os.path.join(MODELS_DIR, "top_0.npz")
+    best_path = os.path.join(MODELS_DIR, "best_model.npz")
 
     if render_universal and os.path.exists(universal_path):
         logging.info("Rendering UNIVERSAL ALL-TIME BEST model...")
     elif not os.path.exists(top_0_path) and not os.path.exists(best_path) and not os.path.exists(universal_path):
-        logging.warning("No models found in models/. Run --train first.")
+        logging.warning("No models found in data/models/. Run --train first.")
         return
     else:
         logging.info("Rendering top 5 models...")
@@ -156,7 +158,7 @@ def render(render_universal=False):
         if render_universal and os.path.exists(universal_path):
             path = universal_path
         else:
-            m_top = os.path.join("models", f"top_{i}.npz")
+            m_top = os.path.join(MODELS_DIR, f"top_{i}.npz")
             if os.path.exists(m_top):
                 path = m_top
             elif os.path.exists(best_path):
@@ -380,11 +382,11 @@ def render(render_universal=False):
 
 
 def main():
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler(os.path.join("logs", "evolution.log"), encoding="utf-8"), logging.StreamHandler()],
+        handlers=[logging.FileHandler(os.path.join(LOGS_DIR, "evolution.log"), encoding="utf-8"), logging.StreamHandler()],
     )
 
     parser = argparse.ArgumentParser(description="Evolved Locomotion in Python")

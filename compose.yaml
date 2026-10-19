@@ -5,8 +5,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
-      - ./logs:/app/logs
+      - ./data:/app/data
     environment:
       - PORT=8000
       - PYTHONUNBUFFERED=1

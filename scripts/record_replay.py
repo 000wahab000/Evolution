@@ -1,5 +1,5 @@
 """
-Record one episode per dashboard model into static/replays/<name>.json.
+Record one episode per dashboard model into web/static/replays/<name>.json.
 
 The physics is chaotic: a 1e-6 difference in the forward pass (BLAS kernel, CPU) changes the walk,
 so the server can't be trusted to reproduce what we verified locally. We record once here, commit
@@ -21,10 +21,10 @@ sys.path.insert(0, ROOT)
 
 from src.environment import CreatureEnv  # noqa: E402
 from src.model import CreatureBrain  # noqa: E402
-from src.utils import load_state_dict_file  # noqa: E402
+from src.utils import MODELS_DIR, load_state_dict_file  # noqa: E402
 
 MODELS = {"best": "best_model.npz", "universal": "universal_best.npz", "random": None}
-OUT_DIR = os.path.join(ROOT, "static", "replays")
+OUT_DIR = os.path.join(ROOT, "web", "static", "replays")
 MAX_STEPS = 600  # same cap as /api/stream/sim
 FPS = 45  # the stream's frame rate
 SPAWN_X = 400.0
@@ -59,7 +59,7 @@ def terrain_polyline(env, x_min=0.0):
 def record(name, weights):
     brain = CreatureBrain()
     if weights:
-        brain.load_state_dict(load_state_dict_file(os.path.join(ROOT, "models", weights)))
+        brain.load_state_dict(load_state_dict_file(os.path.join(ROOT, MODELS_DIR, weights)))
 
     env = CreatureEnv(fitness_mode="baseline")
     state = env.reset()

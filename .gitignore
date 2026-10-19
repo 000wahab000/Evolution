@@ -21,7 +21,6 @@ package-lock.json
 package.json
 
 # Generated plot outputs (scripts/plot_logs.py)
-logs/dashboard.html
-logs/evolution_graph.png
-assets/evolution_graph.png
-assets/evolution_all_runs.png
+data/logs/dashboard.html
+data/logs/evolution_graph.png
+data/logs/evolution_all_runs.png
