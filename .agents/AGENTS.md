@@ -3,17 +3,17 @@
 ## Workspace Directory Structure
 
 - **`src/`**: Core python modules (`environment.py`, `evolution.py`, `model.py`).
-- **`models/`**: Saved NumPy model checkpoints (`best_model.npz`, `top_0.npz` ... `top_4.npz`).
-- **`logs/`**: Training logs and metrics (`history.csv`, `evolution.log`).
-- **`templates/`**: Web application HTML templates (`index.html`).
+- **`data/models/`**: Saved NumPy model checkpoints (`best_model.npz`, `top_0.npz` ... `top_4.npz`).
+- **`data/logs/`**: Training logs and metrics (`history.csv`, `evolution.log`).
+- **`web/`**: Dashboard template (`web/templates/index.html`) and recorded replays (`web/static/replays/`).
 - **`tests/`**: Pytest test suite (`test_environment.py`).
-- **`assets/`**: Media assets (GIFs, screenshots, diagrams).
+- **`docs/`**: Study guide, `STRATEGY.md`, plans, and README media (`docs/media/`).
 - **`docs/solutions/`**: Documented solutions to past technical challenges and bug fixes.
 
 ## Model & File Location Rules
 
-1. **Model Checkpoints**: Always save and load model checkpoints inside the `models/` directory (e.g. `models/best_model.npz`, `models/top_X.npz`).
-2. **Logs & Metrics**: Always output training logs, metrics CSVs, and progress reports inside `logs/`.
+1. **Model Checkpoints**: Always save and load model checkpoints inside the `data/models/` directory (e.g. `data/models/best_model.npz`, `data/models/top_X.npz`).
+2. **Logs & Metrics**: Always output training logs, metrics CSVs, and progress reports inside `data/logs/`.
 3. **No Root Pollution**: Do not leave transient `.npz` or `.log` files sitting in the repository root directory.
 
 ## Ponytail / Senior Developer Principles

@@ -11,10 +11,17 @@ import numpy as np
 from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
-from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
+from src.utils import (
+    LOGS_DIR,
+    MODELS_DIR,
+    atomic_save,
+    load_state_dict_file,
+    load_universal_best_meta,
+    save_universal_best,
+)
 
-app = Flask(__name__)
-# static/ holds the recorded replays (scripts/record_replay.py); short cache so a redeploy shows up quickly
+app = Flask(__name__, template_folder="web/templates", static_folder="web/static")
+# web/static/ holds the recorded replays (scripts/record_replay.py); short cache so a redeploy shows up quickly
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 300
 
 # Global Training State
@@ -40,10 +47,10 @@ training_thread = None
 def run_training_loop():
     global training_state
     try:
-        os.makedirs("models", exist_ok=True)
-        os.makedirs("logs", exist_ok=True)
+        os.makedirs(MODELS_DIR, exist_ok=True)
+        os.makedirs(LOGS_DIR, exist_ok=True)
 
-        history_path = os.path.join("logs", "history.csv")
+        history_path = os.path.join(LOGS_DIR, "history.csv")
         if not os.path.exists(history_path):
             with open(history_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
@@ -87,14 +94,14 @@ def run_training_loop():
                 training_state["diversity_score"] = diversity
 
                 # Save session best
-                atomic_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.npz"))
+                atomic_save(pop.models[gen_best_idx].state_dict(), os.path.join(MODELS_DIR, "best_model.npz"))
 
                 # Save top 5
                 sorted_indices = np.argsort(pop.fitnesses)[::-1]
                 for idx_rank in range(min(5, len(pop.models))):
                     atomic_save(
                         pop.models[sorted_indices[idx_rank]].state_dict(),
-                        os.path.join("models", f"top_{idx_rank}.npz"),
+                        os.path.join(MODELS_DIR, f"top_{idx_rank}.npz"),
                     )
 
                 # Universal record update
@@ -134,7 +141,7 @@ def index():
 
 @app.route("/api/history")
 def get_history():
-    history_file = os.path.join("logs", "history.csv")
+    history_file = os.path.join(LOGS_DIR, "history.csv")
     if not os.path.exists(history_file):
         return jsonify([])
 
@@ -240,12 +247,12 @@ def stream_simulation():
 
     def generate():
         brain = CreatureBrain()
-        if model_type == "universal" and os.path.exists(os.path.join("models", "universal_best.npz")):
-            brain.load_state_dict(load_state_dict_file(os.path.join("models", "universal_best.npz")))
-        elif model_type == "best" and os.path.exists(os.path.join("models", "best_model.npz")):
-            brain.load_state_dict(load_state_dict_file(os.path.join("models", "best_model.npz")))
+        if model_type == "universal" and os.path.exists(os.path.join(MODELS_DIR, "universal_best.npz")):
+            brain.load_state_dict(load_state_dict_file(os.path.join(MODELS_DIR, "universal_best.npz")))
+        elif model_type == "best" and os.path.exists(os.path.join(MODELS_DIR, "best_model.npz")):
+            brain.load_state_dict(load_state_dict_file(os.path.join(MODELS_DIR, "best_model.npz")))
         elif model_type.startswith("top_"):
-            top_path = os.path.join("models", f"{model_type}.npz")
+            top_path = os.path.join(MODELS_DIR, f"{model_type}.npz")
             if os.path.exists(top_path):
                 brain.load_state_dict(load_state_dict_file(top_path))
 
@@ -287,14 +294,14 @@ def download_model(filename):
     safe_names = ["universal_best.npz", "best_model.npz", "top_0.npz", "top_1.npz", "top_2.npz", "top_3.npz", "top_4.npz"]
     if filename not in safe_names:
         return jsonify({"error": "Invalid model filename"}), 400
-    models_dir = os.path.abspath("models")
+    models_dir = os.path.abspath(MODELS_DIR)
     return send_from_directory(models_dir, filename, as_attachment=True, max_age=0)  # change during training
 
 
 @app.route("/api/logs/tail")
 def get_log_tail():
     """Returns the last N lines from evolution.log."""
-    log_file = os.path.join("logs", "evolution.log")
+    log_file = os.path.join(LOGS_DIR, "evolution.log")
     if not os.path.exists(log_file):
         return jsonify([])
     try:

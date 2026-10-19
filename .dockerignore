@@ -33,9 +33,7 @@
 LICENSE
 README.md
 **/.pytest_cache
-assets
 docs
 tests
 .agents
 .claude
-STRATEGY.md

@@ -4,9 +4,10 @@ import time
 
 import numpy as np
 
-DEFAULT_MODELS_DIR = "models"
-UNIVERSAL_BEST_PATH = os.path.join(DEFAULT_MODELS_DIR, "universal_best.npz")
-UNIVERSAL_META_PATH = os.path.join(DEFAULT_MODELS_DIR, "universal_best_meta.json")
+MODELS_DIR = os.path.join("data", "models")
+LOGS_DIR = os.path.join("data", "logs")
+UNIVERSAL_BEST_PATH = os.path.join(MODELS_DIR, "universal_best.npz")
+UNIVERSAL_META_PATH = os.path.join(MODELS_DIR, "universal_best_meta.json")
 
 
 def atomic_save(state_dict: dict, path: str) -> None:
@@ -25,7 +26,7 @@ def load_state_dict_file(path: str) -> dict:
         return {k: data[k] for k in data.files}
 
 
-def load_universal_best_meta(models_dir: str = DEFAULT_MODELS_DIR) -> dict:
+def load_universal_best_meta(models_dir: str = MODELS_DIR) -> dict:
     """Load JSON metadata associated with the all-time best model checkpoint."""
     meta_path = os.path.join(models_dir, "universal_best_meta.json")
     if os.path.exists(meta_path):
@@ -44,7 +45,7 @@ def save_universal_best(
     fitness_mode: str,
     pop_size: int,
     mutation_rate: float,
-    models_dir: str = DEFAULT_MODELS_DIR,
+    models_dir: str = MODELS_DIR,
 ) -> None:
     """Atomically persist the universal best model weights and metadata."""
     os.makedirs(models_dir, exist_ok=True)
