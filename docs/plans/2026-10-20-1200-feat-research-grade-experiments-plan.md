@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-20
 topic: research-grade-experiments
 artifact_contract: ce-unified-plan/v1
-artifact_readiness: draft-for-review
+artifact_readiness: implementation-ready
 product_contract_source: user-request
 execution: code
 ---
@@ -21,7 +21,7 @@ execution: code
   - A statistics module, a figure suite, and a one-command report.
 - **Product Authority:** User request 2026-10-20 ("make this walkable bot a research project level"; "use graphical difference of metrics ... our project NEEDS to benefit SOMEONE"). Research basis: `docs/research/2026-10-20-research-direction.md`.
 - **Executor:** Phases P1-P9 are handed to a coding agent (Sonnet) one phase per PR. Running the experiments and writing the paper are not part of this plan.
-- **Open Blockers:** The "Decisions for review" section must be answered before P5 and P6.
+- **Open Blockers:** None. All decisions answered 2026-10-20 (see Decisions).
 
 ---
 
@@ -42,7 +42,7 @@ python scripts/run_experiment.py experiments/exp1_cpg.json
 python scripts/analyze.py results/exp1_cpg
 ```
 
-on 8 cores. Within about 4 hours they get `results/exp1_cpg/REPORT.md` containing every figure below, a stats table, and the exact commands and git hash that produced it.
+on a 4-core/8-thread laptop. Within about 4-6 hours (overnight) they get `results/exp1_cpg/REPORT.md` containing every figure below, a stats table, and the exact commands and git hash that produced it.
 
 ---
 
@@ -60,7 +60,7 @@ Today:
 
 **Experiment 1, CPG ablation:**
 - H1: CPG-on reaches a higher held-out test distance IQM than CPG-zeros at an equal episode budget.
-- H2: the CPG advantage persists or grows under terrain shift (test terrains harder than train terrains).
+- H2: the CPG advantage persists or grows under terrain shift (test slopes randomly 5-8%, steeper than the 4% used in training).
 - H3: the noise control does not match CPG-on. This rules out "any extra input helps."
 
 **Experiment 2, optimizer comparison** (CPG-on brain):
@@ -114,7 +114,10 @@ All figures use one colorblind-safe palette with a fixed color per variant acros
 - **R2 Terrain.**
   - The downhill bug is fixed.
   - Terrain is a seeded generator of piecewise-linear courses.
-  - Train and test terrain sets are disjoint seed ranges. A "shifted" test set uses steeper slopes than training allows.
+  - Train and test terrain sets are disjoint seed ranges.
+  - Train terrains: max slope 4%.
+  - **Test terrains (main, M1): each segment's slope drawn at random from 5-8%,** harder than anything seen in training.
+  - Control set: unseen terrains at the training slope (≤4%). Used only for M4, to separate memorizing one course from failing on harder ground.
   - A `legacy` terrain option reproduces the current course exactly, so existing replays and `universal_best` still work.
 - **R3 Evaluation.**
   - Fitness is the mean over k rollouts (default k=5), each on a sampled train terrain with seeded perturbations (friction ×U[0.9,1.1], initial joint-angle noise σ=0.05 rad).
@@ -146,6 +149,41 @@ All figures use one colorblind-safe palette with a fixed color per variant acros
 - No paper writing.
 - Dependencies: `scipy` and `cma` go in a new optional `research` extra; `matplotlib` is already in `viz`. The server image stays unchanged.
 
+### Results storage (researched 2026-10-20)
+- **Decision:** plain files, one folder per run. No SQLite, Parquet or tracker (MLflow, W&B and Aim all need servers or heavy dependencies and can't feed a static dashboard).
+- **Why it fits:**
+  - Each run writes only its own folder, so parallel processes never fight over a shared file.
+  - Folders diff cleanly in git, need nothing but the standard library and numpy, and are easy to read in analysis.
+  - Estimated total: about 30-40 KB per run, about 10 MB for all 240 runs.
+- **Layout:**
+  ```
+  results/<exp>/
+    manifest.json      schema_version, experiment name, config sha256, git commit+dirty,
+                       variant x seed status table (written by the parent runner only)
+    experiment.json    resolved ExperimentConfig + hypotheses id
+    <variant>/seed_<n>/
+      config.json      resolved RunConfig + schema_version
+      meta.json        run card (see below)
+      history.csv      episodes, generation, best_train, mean_train, diversity
+      evals.csv        episodes, M1-M3 on test (5-8%) and control (<=4%) sets
+      champion.npz     w1, b1, w2, b2 as float32 (same as CreatureBrain), load with allow_pickle=False
+      final_test.json  final M1-M8, plus distance at dt and dt/2
+      DONE             JSON {status, sha256 of every file above}, written LAST
+    summary/           summary.json, summary.csv, pairwise.csv, figures/F*.png|svg, REPORT.md
+  ```
+- **Run card (`meta.json`):** schema_version, run_id (`exp/variant/seed`), seed, git_commit, git_dirty, python/numpy/pymunk/cma versions, platform, cpu, started_utc, ended_utc, wall_s, episodes_used, config_sha256, terrain_version.
+- **Versioning:** `schema_version: 1` everywhere. Readers fail loudly on an unknown version, and old runs are never rewritten.
+- **Crash safety on Windows:**
+  - Write to a temp file, then `os.replace`.
+  - Retry `os.replace` up to 5× with backoff on `PermissionError` (antivirus file locks).
+  - `DONE` is written last; a folder without `DONE` counts as unfinished and is rerun.
+- **What goes in git:**
+  - `results/` is gitignored by default.
+  - Each finished experiment is force-added once (about 10 MB, including its summary and figures), after `scripts/verify_results.py` passes.
+  - Never re-commit raw results on every rerun. Tag the commit instead.
+- **Archiving (at paper time, not part of this plan):** a Zenodo upload for a DOI (data CC-BY-4.0, code MIT), plus `CITATION.cff`.
+- **Reproducibility statement:** bit-identical only on the same machine. Physics is chaotic across CPUs and BLAS builds, as the README already notes.
+
 ---
 
 ## Implementation Units
@@ -153,13 +191,14 @@ All figures use one colorblind-safe palette with a fixed color per variant acros
 Each phase is one PR. A phase is not done until its tests pass and `pytest` is green overall.
 
 ### P1. Config, seeding, run folders
-- **Files:** new `src/research/__init__.py`, `src/research/config.py`, `src/research/runlog.py`, `tests/test_research_config.py`.
+- **Files:** new `src/research/__init__.py`, `src/research/config.py`, `src/research/runlog.py`, `tests/test_research_config.py`; edit `pyproject.toml`.
 - **Do:**
+  - Add the optional dependency group `research = ["scipy>=1.11", "cma>=3.3", "matplotlib>=3.7.0"]` to `pyproject.toml`. Do **not** add these to `requirements.txt` or the Dockerfile; the server image stays unchanged. Document `pip install -e .[research]` in the README.
   - `ExperimentConfig` dataclass, loaded from JSON (no YAML dependency), with fields:
     - `name`, `seeds`, `variants` (each a dict of overrides)
     - `optimizer`, `optimizer_params`, `brain_input`
     - `episodes_budget`, `rollouts_k`, `terrain`, `perturbations`
-    - `eval_every_episodes`, `test_terrain_seeds`, `shift_test_terrain_seeds`
+    - `eval_every_episodes`, `test_terrain_seeds` (5-8% slopes), `control_terrain_seeds` (≤4% slopes)
   - `resolve(variant, seed)` returns a frozen RunConfig.
   - `make_rng(run_seed, *keys)` returns a `numpy.random.Generator` built from `SeedSequence([run_seed, *keys])`. **No global `np.random` / `random` calls in any new code.**
   - `runlog.write_meta(run_dir, cfg)` writes the git hash (`git rev-parse HEAD`, dirty flag), versions, platform and start/end time.
@@ -187,7 +226,7 @@ Each phase is one PR. A phase is not done until its tests pass and `pytest` is g
 - **Files:** new `src/research/evaluate.py`; `tests/test_research_evaluate.py`.
 - **Do:**
   - `rollout(genome_params, brain_input, terrain_spec, perturb, rng, max_steps=600) -> dict` returning `distance, fell, steps, energy, cot, return`, plus an optional trajectory (leg angles, CPG phase) for F9.
-  - `evaluate_genome(params, run_cfg, rng, split="train"|"test"|"shift")` samples k terrains and perturbations and returns the mean fitness plus per-rollout metrics.
+  - `evaluate_genome(params, run_cfg, rng, split="train"|"test"|"control")` samples k terrains and perturbations and returns the mean fitness plus per-rollout metrics.
   - The fitness used for selection is the existing reward (`displacement*2`, stillness penalty, -100 on fall) so the GA stays comparable with today's. Selection uses the train split only.
   - `EpisodeCounter`: every rollout increments it, and the optimizer loop stops at `episodes_budget`.
 - **Tests:**
@@ -226,10 +265,13 @@ Each phase is one PR. A phase is not done until its tests pass and `pytest` is g
   - `run_experiment.py CONFIG [--workers N] [--only variant] [--seeds 0-4]`.
   - Output: `results/<name>/<variant>/seed_<n>/{config.json, meta.json, history.csv, evals.csv, champion.npz, final_test.json, DONE}`.
     - `history.csv` columns: episodes, generation, best_train, mean_train, diversity.
-    - `evals.csv` columns: episodes, then M1-M3 on the test and shift sets for the current champion.
+    - `evals.csv` columns: episodes, then M1-M3 on the test (5-8%) and control (≤4%) sets for the current champion.
   - Skip seeds that already have `DONE`. Atomic writes via `src/utils.atomic_save` patterns.
-  - Add `results/` to `.gitignore`, except committed `REPORT.md` + figures per finished experiment.
-- **Defaults** (subject to the review decisions): 20 seeds, 25,000 episodes per run (pop 50 × k 5 × 100 gens for the GA), eval every 1,250 episodes on 10 test terrains + 10 shift terrains. Estimate: ~20 core-min per run; 80 runs per experiment ≈ 27 core-h ≈ 3.5 h on 8 cores.
+  - Write the layout, run card, `manifest.json` and checksummed `DONE` exactly as in **Results storage** above. Only the parent process writes `manifest.json`.
+  - Add `results/` to `.gitignore`, so half-finished runs can never be committed by accident.
+  - Add `scripts/verify_results.py <exp>`. It checks that every planned run has `DONE` with matching checksums and that `manifest.json` is complete. Only then does it print the `git add -f results/<exp>` command to publish that experiment. It never runs git itself.
+- **Defaults (decided 2026-10-20):** 30 seeds, 25,000 episodes per run (pop 50 × k 5 × 100 gens for the GA), eval every 1,250 episodes on 10 test terrains + 5 control terrains.
+- **Estimate** (measured 0.026 s per 600-step episode on the i7-7700HQ): ~12 core-min per run. 120 runs per experiment ≈ 24 core-h. On 4 physical cores (hyperthreads add ~30%) that's ≈ 5 h. Run overnight with `--workers 6` so the laptop stays usable.
 - **Tests:** the smoke config runs end to end and is resumable (a second invocation is a no-op).
 
 ### P7. Statistics module
@@ -253,12 +295,26 @@ Each phase is one PR. A phase is not done until its tests pass and `pytest` is g
   - A champion's legacy-course distance at dt and dt/2 is recorded in `final_test.json`.
   - REPORT.md flags any variant whose IQM drops more than 30% at dt/2 ("possible physics exploit").
 
-### P10 (optional, after review). Dashboard "Experiments" view
+### P10. Dashboard "Experiments" view (in scope)
 - **Files:** `app.py` (static route for `results/*/REPORT.md` assets), `web/templates/index.html`.
-- **Do:**
-  - A tab listing finished experiments that shows F1, F2 and F5 plus the summary table.
-  - Replay buttons for each variant's median-seed champion, so visitors can *see* the walking difference behind the numbers.
-  - Static files only, with no simulation on the server, consistent with the deploy constraints.
+- **Files:** add `scripts/export_dashboard.py`; edit `scripts/record_replay.py` (`--champion PATH --out PATH`), `web/templates/index.html`. `app.py` needs no change if the bundle lives under `web/static/`.
+- **Data flow:**
+  1. `analyze.py` writes `summary.json` and figures. These are the source of truth for both the paper and the site.
+  2. `export_dashboard.py results/<exp>` writes `web/static/experiments/<exp>/`:
+     - `index.json`: summary table, verdicts, colors, captions.
+     - `curves.json`: F1 IQM and CI on the eval grid, downsampled.
+     - `runs.json`: per-seed final M1 for F2.
+     - Copies of the F3, F6-F10 SVGs.
+     - Budget: under 300 KB per experiment.
+  3. `record_replay.py` writes `web/static/replays/<exp>/<variant>_median.json` for each variant's median-seed champion.
+  4. The new Experiments tab fetches `index.json`, then:
+     - Draws F1 (CI bands) and F2 (per-seed dots) with the **already-loaded Chart.js 4.4.0**. No new library; Plotly (~1.1 MB) is ruled out.
+     - Renders F5 as a colored HTML table with aria-labels.
+     - Shows the other figures as lazy-loaded SVGs.
+     - Keeps every caption and the summary table as a text alternative.
+  5. A "Watch the difference" button per variant plays its median champion's replay in the existing 3D viewer.
+- **Constraints:** static files only, no server simulation. Watch Render's free-tier bandwidth (5 GB/month per our deploy notes; confirm on render.com/pricing). Keep a dashboard visit under 1 MB.
+- **Tests:** `export_dashboard.py` on the smoke results produces a valid bundle under 300 KB. Add a Flask test that the static bundle is served.
 
 ---
 
@@ -271,13 +327,13 @@ Each phase is one PR. A phase is not done until its tests pass and `pytest` is g
 5. After P6, run `experiments/smoke.json` and attach the generated REPORT.md to the PR for a visual check.
 6. Running the full experiments is a separate, human-approved step after P9.
 
-## Decisions for review (please correct)
+## Decisions (answered 2026-10-20)
 
-1. **Primary metric:** held-out test distance (M1) rather than training fitness. *Recommended.*
-2. **Seeds per variant:** 20 (≈3.5 h per experiment on 8 cores) or 30 (≈5 h).
-3. **Episode budget per run:** 25,000 (≈100 GA generations at k=5). More budget makes CMA-ES's advantage show more clearly; less is faster.
-4. **Hyperparameter fairness:** (a) every optimizer at library or paper defaults, with the GA at its current values (*recommended*, simpler and honest), or (b) an equal small tuning budget per optimizer on train terrains only.
-5. **Terrain shift:** train max slope 4% (similar to today's hill), test 4%, shift test 8%.
-6. **Optional `research` extra:** add `scipy` and `cma` (both pure-Python/NumPy-friendly, about 40 MB, not in the server image). OK?
-7. **P10 dashboard view:** in scope now, or after the first experiment finishes?
-8. **Evolved CPG period** (a gene for the clock period, from the original idea A): left out to keep parameter counts equal across variants. Add it later as an exp1b?
+1. **Primary metric:** distance on held-out test terrains (M1). Confirmed.
+2. **Seeds per variant:** 30.
+3. **Episode budget per run:** 25,000. Measured feasible on the user's laptop (≈5 h per experiment overnight).
+4. **Hyperparameter fairness:** option (a), confirmed. Every optimizer runs at its published or library default (`cma` package defaults for CMA-ES; Salimans et al. 2017 for OpenAI-ES; Mania et al. 2018 V1 for random search); the GA keeps its current values. No per-method tuning. The paper states this.
+5. **Terrain:** train ≤4%; test slopes random 5-8% (user decision); small ≤4% control set kept for the generalization-gap metric.
+6. **`research` optional dependency group:** confirmed. scipy (statistics), cma (CMA-ES baseline) and matplotlib; laptop-only, added in P1.
+7. **P10 dashboard view:** in scope. Storage decided: plain files plus a static dashboard bundle (see Results storage).
+8. **Evolved CPG period:** dropped. Basic variants first.
