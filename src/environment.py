@@ -2,13 +2,31 @@ import math
 import numpy as np
 import pymunk
 
+from src.terrain import add_terrain, legacy_course
+
 CPG_CLOCK = tuple(
     (math.sin(2.0 * math.pi * i / 30.0), math.cos(2.0 * math.pi * i / 30.0))
     for i in range(30)
 )
+CPG_MODES = ("cpg", "zeros", "noise", "shuffled")
+
+
 class CreatureEnv:
-    def __init__(self, fitness_mode="baseline"):
+    def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1):
+        """terrain: TerrainSpec (default: the legacy course). cpg_mode replaces state[13:15]:
+        cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (fixed permutation of the
+        30-step table, drawn from cpg_rng). substeps>1 splits each step into that many physics
+        steps of 3/60/substeps; all step counters still count brain steps."""
+        if cpg_mode not in CPG_MODES:
+            raise ValueError(f"cpg_mode must be one of {CPG_MODES}")
+        if cpg_mode in ("noise", "shuffled") and cpg_rng is None:
+            raise ValueError(f"cpg_mode={cpg_mode!r} needs cpg_rng")
         self.fitness_mode = fitness_mode
+        self.terrain = terrain if terrain is not None else legacy_course()
+        self.cpg_mode = cpg_mode
+        self.cpg_rng = cpg_rng
+        self.cpg_perm = cpg_rng.permutation(30) if cpg_mode == "shuffled" else None
+        self.substeps = int(substeps)
         self.space = pymunk.Space()
         self.space.gravity = (0, 900) 
         self.create_ground()
@@ -16,11 +34,7 @@ class CreatureEnv:
         self.steps = 0
 
     def create_ground(self):
-        body = self.space.static_body
-        self.ground_shape = pymunk.Segment(body, (-10000, 500), (3000, 500), 5.0)  
-        self.ground_shape.friction = 1.2
-        self.space.add(self.ground_shape)
-        self.terrain_changing()
+        self.ground_shapes = add_terrain(self.space, self.terrain)
 
     def create_creature(self):
         mass = 10
@@ -67,17 +81,23 @@ class CreatureEnv:
             self.joints.append(pivot)
             self.motors.append(motor)
 
-    def reset(self):
+    def reset(self, pose_noise=None):
+        """pose_noise: optional 4 leg angles (rad) applied by rotating each leg about its pivot."""
         self.torso.position = (400, 450)
         self.torso.angle = 0.0
         self.torso.velocity = (0.0, 0.0)
         self.torso.angular_velocity = 0.0
-        for leg, anchor in zip(self.legs, self.anchors):
+        for i, (leg, anchor) in enumerate(zip(self.legs, self.anchors)):
             leg.position = (
                 400 + anchor[0],
                 450 + anchor[1] + self.leg_length / 2,
             )
             leg.angle = 0.0
+            if pose_noise is not None:
+                th = float(pose_noise[i])
+                h = self.leg_length / 2
+                leg.position = (400 + anchor[0] - h * math.sin(th), 450 + anchor[1] + h * math.cos(th))
+                leg.angle = th
             leg.velocity = (0.0, 0.0)
             leg.angular_velocity = 0.0
         for motor in self.motors:
@@ -91,7 +111,8 @@ class CreatureEnv:
             motor.rate = float(action) * 10.0
 
         old_x = self.torso.position.x
-        self.space.step(3 / 60.0)
+        for _ in range(self.substeps):
+            self.space.step(3 / 60.0 / self.substeps)
         self.steps += 1
         state = self.get_state()
         displacement = self.torso.position.x - old_x
@@ -100,7 +121,13 @@ class CreatureEnv:
         # reward += leg_motion * 0.0005 #(dont remove the bum ahh ## please )
         torso_angle = self.torso.angle
         torso_bottom = self.torso.position.y + 30.0 * abs(math.sin(torso_angle)) + 10.0 * abs(math.cos(torso_angle))
-        body_touched_ground = torso_bottom >= 495.0
+        if self.terrain.legacy:
+            ground, deep = 495.0, 520.0
+        else:  # ground height under the torso; off the course counts as falling
+            top = self.terrain.ground_top(self.torso.position.x)
+            ground = top if top is not None else -math.inf
+            deep = ground + 25.0
+        body_touched_ground = torso_bottom >= ground
         if self.fitness_mode in ["tilt_penalized", "all_penalties"]:
             reward -= 20 * abs(torso_angle) / 60.0
         if self.fitness_mode in ["energy_penalized", "all_penalties"]:
@@ -114,16 +141,23 @@ class CreatureEnv:
         else:
             self.still_steps = 0
         if self.fitness_mode in ["ground_termination", "touch_ground"]:
-            fallen = body_touched_ground or abs(torso_angle) > 1.2 or self.torso.position.y > 520
+            fallen = body_touched_ground or abs(torso_angle) > 1.2 or self.torso.position.y > deep
         else:
-            fallen = abs(torso_angle) > 1.2 or self.torso.position.y > 520 or body_touched_ground
+            fallen = abs(torso_angle) > 1.2 or self.torso.position.y > deep or body_touched_ground
         stuck = self.still_steps > 60
         done = self.steps > 600 or fallen or stuck
         return state, reward, done, fallen
 
     def get_state(self):
         torso_angle = self.torso.angle
-        cpg_sin, cpg_cos = CPG_CLOCK[self.steps % 30]
+        if self.cpg_mode == "cpg":
+            cpg_sin, cpg_cos = CPG_CLOCK[self.steps % 30]
+        elif self.cpg_mode == "zeros":
+            cpg_sin, cpg_cos = 0.0, 0.0
+        elif self.cpg_mode == "noise":
+            cpg_sin, cpg_cos = self.cpg_rng.uniform(-1.0, 1.0, 2)
+        else:
+            cpg_sin, cpg_cos = CPG_CLOCK[self.cpg_perm[self.steps % 30]]
         legs = self.legs
 
         return np.array([
@@ -170,42 +204,3 @@ class CreatureEnv:
             "velocity_x": float(self.torso.velocity.x),
             "angle": float(self.torso.angle),
         }
-    def terrain_changing(self):
-        #*ok so firstly the ground is NOT super flat but kinda
-        # and then it will chanage like the more far we go the harder it is
-        # the body spawns at 400 so we need to add the uneven grounds 
-        # after the 600 and then we can do soo
-        # no obstacles btw
-        start_x = 600
-        end_x = 1600
-        y = 500
-        friction = 1.8
-        equation1 = 500 
-        equation2 = 500 - (end_x - start_x ) / 25
-        # the up hill 
-        self.ground_body = pymunk.Body(body_type=pymunk.Body.STATIC)
-        self.ground_shape = pymunk.Segment(
-            self.ground_body,
-            (start_x, equation1),
-            (end_x, equation2),
-            4
-        )
-        self.ground_shape.friction = friction
-        self.space.add(self.ground_body, self.ground_shape)
-
-        # the downhill
-        start_x2 = 1600
-        end_x2 = 2600
-        y = 500
-        friction = 1.8
-        equation1 = 500 
-        equation2 = 500 - (end_x2 - start_x2 ) / 25
-        self.ground_body = pymunk.Body(body_type=pymunk.Body.STATIC)
-        self.ground_shape = pymunk.Segment(
-            self.ground_body,
-            (start_x2, equation1),
-            (end_x2, equation2),
-            4
-        )
-        self.ground_shape.friction = friction
-        self.space.add(self.ground_body, self.ground_shape)
