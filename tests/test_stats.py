@@ -17,6 +17,13 @@ def test_iqm_known_answer():
     assert iqm(range(1, 9)) == 4.5
 
 
+def test_iqm_at_experiment_size():
+    # n=30 (seeds per variant): trims int(0.25 * 30) = 7 from each end, averages the middle 16.
+    x = np.random.default_rng(3).normal(100, 40, 30)
+    assert iqm(x) == pytest.approx(np.sort(x)[7:23].mean())
+    assert iqm(list(range(30)) + [10_000]) < 20  # one outlier seed barely moves it
+
+
 def test_bootstrap_of_constant_is_constant():
     assert bootstrap_ci([3.0] * 10, np.random.default_rng(0), n=500) == (3.0, 3.0)
     assert bootstrap_diff_ci([3.0] * 5, [1.0] * 5, np.random.default_rng(0), n=500) == (2.0, 2.0)

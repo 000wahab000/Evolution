@@ -21,14 +21,15 @@ from src.research.stats import (
     iqm,
     mann_whitney,
     prob_improvement,
-    wilson_ci,
 )
 from src.utils import load_state_dict_file
 
 TAU = 300.0  # M5 threshold, px
 FRICTIONS = [0.6, 0.8, 1.0, 1.2, 1.4]
 POSE_SIGMAS = [0.0, 0.05, 0.1, 0.2]
-EXPLOIT_DROP = 0.30  # flag a variant whose IQM falls more than this at dt/2
+EXPLOIT_DROP = 0.30  # flag a seed whose test distance falls more than this at dt/2
+EXPLOIT_MIN_DISTANCE = 50.0  # px; relative drops of near-zero walkers are noise, not exploits
+MISSING = "not tested (missing data)"
 METRICS = ["test_distance", "train_distance", "control_distance", "shift_drop", "gap_test",
            "gap_control", "fall_rate", "cot", "dt2_distance", "diversity"]
 
@@ -83,17 +84,27 @@ def summarize_experiment(exp, runs, rng):
             x = values(rs, m)
             s[m] = ({"iqm": float(iqm(x)), "ci": bootstrap_ci(x, rng), "median": float(np.median(x))}
                     if len(x) else None)
-        k, n = sum(r["falls"] for r in rs), sum(r["episodes"] for r in rs)
-        s["fall_pooled"] = {"falls": k, "episodes": n, "rate": k / n if n else float("nan"),
-                            "wilson": wilson_ci(k, n)}
+        # Episodes are clustered by seed, so the CI resamples seeds, not episodes.
+        per_seed = values(rs, "fall_rate")
+        s["fall"] = {"mean": float(per_seed.mean()) if len(per_seed) else float("nan"),
+                     "ci": bootstrap_ci(per_seed, rng, stat=_mean) if len(per_seed) else (float("nan"),) * 2,
+                     "falls": sum(r["falls"] for r in rs), "episodes": sum(r["episodes"] for r in rs)}
         reached = [r["episodes_to_tau"] for r in rs if r["episodes_to_tau"] is not None]
         s["episodes_to_tau"] = {"tau": TAU, "reached": len(reached), "of": len(rs),
                                 "median": float(np.median(reached)) if reached else None}
         t, d2 = s["test_distance"], s["dt2_distance"]
         s["dt2_drop"] = ((t["iqm"] - d2["iqm"]) / abs(t["iqm"])) if t and d2 and t["iqm"] else None
-        s["exploit_flag"] = bool(s["dt2_drop"] is not None and s["dt2_drop"] > EXPLOIT_DROP)
+        eligible = [r for r in rs if r["test_distance"] > EXPLOIT_MIN_DISTANCE]
+        flagged = [r["seed"] for r in eligible
+                   if (r["test_distance"] - r["dt2_distance"]) / r["test_distance"] > EXPLOIT_DROP]
+        s["dt2_flagged"] = {"seeds": flagged, "of": len(eligible)}
+        s["exploit_flag"] = bool(flagged)
         out[v] = s
     return out
+
+
+def _mean(x, axis=None):
+    return np.mean(x, axis=axis)
 
 
 def pairwise(exp, runs, rng):
@@ -104,8 +115,9 @@ def pairwise(exp, runs, rng):
         rows.append(_contrast(runs, a, b, "test_distance", rng, kind="exploratory"))
     for row, p in zip(rows, holm([r["p"] for r in rows])):
         row["p_holm"] = p
+    # Every pre-registered hypothesis stays in the Holm family; missing data gives p = 1.
     confirm = [_contrast(runs, h["a"], h["b"], h["metric"], rng, kind="confirmatory", hyp=h)
-               for h in exp.hypotheses if h["a"] in runs and h["b"] in runs]
+               for h in exp.hypotheses]
     for row, p in zip(confirm, holm([r["p"] for r in confirm])):
         row["p_holm"] = p
         row["verdict"] = verdict(row)
@@ -113,10 +125,15 @@ def pairwise(exp, runs, rng):
 
 
 def _contrast(runs, a, b, metric, rng, kind, hyp=None):
-    xa, xb = values(runs[a], metric), values(runs[b], metric)
+    xa, xb = values(runs.get(a, []), metric), values(runs.get(b, []), metric)
+    head = {"kind": kind, "id": hyp["id"] if hyp else "", "a": a, "b": b, "metric": metric,
+            "direction": hyp["direction"] if hyp else "", "n_a": len(xa), "n_b": len(xb)}
+    if not len(xa) or not len(xb):
+        nan = float("nan")
+        return {**head, "missing": True, "iqm_a": nan, "iqm_b": nan, "iqm_diff": nan, "diff_ci_lo": nan,
+                "diff_ci_hi": nan, "p": 1.0, "cliffs_delta": nan, "p_improvement": nan}
     lo, hi = bootstrap_diff_ci(xa, xb, rng)
-    return {"kind": kind, "id": hyp["id"] if hyp else "", "a": a, "b": b, "metric": metric,
-            "direction": hyp["direction"] if hyp else "", "n_a": len(xa), "n_b": len(xb),
+    return {**head, "missing": False,
             "iqm_a": float(iqm(xa)), "iqm_b": float(iqm(xb)), "iqm_diff": float(iqm(xa) - iqm(xb)),
             "diff_ci_lo": lo, "diff_ci_hi": hi, "p": mann_whitney(xa, xb),
             "cliffs_delta": cliffs_delta(xa, xb), "p_improvement": prob_improvement(xa, xb)}
@@ -124,6 +141,8 @@ def _contrast(runs, a, b, metric, rng, kind, hyp=None):
 
 def verdict(row, alpha=0.05):
     """supported: Holm p < alpha and the IQM-difference CI excludes 0 in the predicted direction."""
+    if row.get("missing"):
+        return MISSING
     if row["p_holm"] >= alpha:
         return "inconclusive"
     up = row["diff_ci_lo"] > 0
@@ -164,12 +183,12 @@ def robustness(runs):
             cfg, params = r["cfg"], _champion(r)
             test = fixed_scenarios(cfg, "test")
             fr.append([r["test_distance"] if f == 1.0 else summarize(
-                [rollout(params, cfg.brain_input, Scenario(s.terrain, f, None, s.cpg_seed), cfg.max_steps)
-                 for s in test])["distance"] for f in FRICTIONS])
+                [rollout(params, cfg, Scenario(s.terrain, f, None, s.cpg_seed)) for s in test])["distance"]
+                for f in FRICTIONS])
             pose.append([r["test_distance"] if sig == 0.0 else summarize(
-                [rollout(params, cfg.brain_input, Scenario(
-                    s.terrain, 1.0, tuple(make_rng(r["seed"], "pose", i, j).normal(0, sig, 4)), s.cpg_seed),
-                    cfg.max_steps) for j, s in enumerate(test)])["distance"]
+                [rollout(params, cfg, Scenario(s.terrain, 1.0, tuple(make_rng(r["seed"], "pose", i, j)
+                                                                     .normal(0, sig, 4)), s.cpg_seed))
+                 for j, s in enumerate(test)])["distance"]
                 for i, sig in enumerate(POSE_SIGMAS)])
         out[v] = {"friction": np.array(fr), "pose": np.array(pose),
                   "dt": np.array([[r["test_distance"], r["dt2_distance"]] for r in rs])}
@@ -201,8 +220,7 @@ def gait(runs):
         sigs, traces = [], {}
         for r in rs:
             cfg = r["cfg"]
-            res = rollout(_champion(r), cfg.brain_input, fixed_scenarios(cfg, "test")[0],
-                          cfg.max_steps, record=True)
+            res = rollout(_champion(r), cfg, fixed_scenarios(cfg, "test")[0], record=True)
             traces[r["seed"]] = res["leg_angles"]
             sigs.append(gait_signature(res["leg_angles"]))
         order = sorted(rs, key=lambda r: r["test_distance"])

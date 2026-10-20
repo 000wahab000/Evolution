@@ -38,9 +38,12 @@ def main(argv=None):
     results = run_experiment(exp, args.out, args.workers,
                              only=args.only.split(",") if args.only else None,
                              seeds=parse_seeds(args.seeds))
+    failed = [k for k, r in results.items() if r.startswith("failed")]
     print(f"{sum(r == 'done' for r in results.values())} run(s) finished, "
-          f"{sum(r == 'skipped' for r in results.values())} already done -> {os.path.join(args.out, exp.name)}")
+          f"{sum(r == 'skipped' for r in results.values())} already done, {len(failed)} failed "
+          f"-> {os.path.join(args.out, exp.name)}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

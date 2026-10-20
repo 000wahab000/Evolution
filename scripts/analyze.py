@@ -4,6 +4,10 @@ Only F7 (robustness) and F9 (gait) re-simulate, by replaying the saved champions
 
     python scripts/analyze.py results/exp1_cpg
     python scripts/analyze.py results/smoke --no-replay
+    python scripts/analyze.py results/exp1_cpg --allow-incomplete   # partial results, flagged
+
+It runs verify_results first and refuses an incomplete or stale experiment unless
+--allow-incomplete is given; then REPORT.md opens with the list of problems.
 """
 
 import argparse
@@ -21,6 +25,7 @@ sys.path.insert(0, ROOT)
 from src.research import analysis, figures, report  # noqa: E402
 from src.research.config import SCHEMA_VERSION  # noqa: E402
 from src.research.runlog import read_json, write_json, write_text  # noqa: E402
+from src.research.runner import verify_experiment  # noqa: E402
 from src.research.stats import iqm  # noqa: E402
 
 
@@ -40,11 +45,12 @@ def _summary_rows(summary):
         for m in analysis.METRICS:
             row.update({f"{m}_iqm": s[m] and s[m]["iqm"], f"{m}_ci_lo": s[m] and s[m]["ci"][0],
                         f"{m}_ci_hi": s[m] and s[m]["ci"][1], f"{m}_median": s[m] and s[m]["median"]})
-        f, e = s["fall_pooled"], s["episodes_to_tau"]
-        row.update({"falls": f["falls"], "test_episodes": f["episodes"], "fall_rate": f["rate"],
-                    "fall_wilson_lo": f["wilson"][0], "fall_wilson_hi": f["wilson"][1],
+        f, e = s["fall"], s["episodes_to_tau"]
+        row.update({"falls": f["falls"], "test_episodes": f["episodes"], "fall_rate": f["mean"],
+                    "fall_ci_lo": f["ci"][0], "fall_ci_hi": f["ci"][1],
                     "tau": e["tau"], "reached_tau": e["reached"], "median_episodes_to_tau": e["median"],
-                    "dt2_drop": s["dt2_drop"], "exploit_flag": s["exploit_flag"]})
+                    "dt2_drop": s["dt2_drop"], "dt2_flagged_seeds": " ".join(map(str, s["dt2_flagged"]["seeds"])),
+                    "exploit_flag": s["exploit_flag"]})
         rows.append(row)
     return rows
 
@@ -74,7 +80,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("exp_dir")
     ap.add_argument("--no-replay", action="store_true", help="skip F7/F9 (they replay champions)")
+    ap.add_argument("--allow-incomplete", action="store_true", help="analyze despite missing or stale runs")
     args = ap.parse_args(argv)
+
+    problems = verify_experiment(args.exp_dir)
+    if problems and not args.allow_incomplete:
+        listing = "\n  ".join(problems[:10])
+        sys.exit(f"{len(problems)} problem(s) in {args.exp_dir} (see scripts/verify_results.py):\n  "
+                 f"{listing}\nRe-run the experiment, or pass --allow-incomplete.")
 
     exp, runs = analysis.load(args.exp_dir)
     if not runs:
@@ -117,7 +130,7 @@ def main(argv=None):
         figures.save_all(draw, name, fig_dir)
 
     write_text(os.path.join(out, "REPORT.md"),
-               report.build(exp, summary, rows, confirm, caps, _repro(args.exp_dir, exp, runs)))
+               report.build(exp, summary, rows, confirm, caps, _repro(args.exp_dir, exp, runs), problems))
     for c in confirm:
         print(f"{c['id']}: {c['a']} vs {c['b']} on {c['metric']} -> {c['verdict']}")
     print(f"wrote {os.path.join(out, 'REPORT.md')}")

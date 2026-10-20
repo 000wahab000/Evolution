@@ -53,6 +53,15 @@ def test_counter_counts_train_rollouts_only():
     assert counter.n == pop * CFG.rollouts_k * gens
 
 
+def test_train_eval_terrains_are_new_but_train_distribution():
+    val = [s.terrain for s in fixed_scenarios(CFG, "validation")]
+    tev = [s.terrain for s in fixed_scenarios(CFG, "train_eval")]
+    assert not set(val) & set(tev)
+    for t in tev:
+        for s in t.segments[1:]:
+            assert abs((s.b[1] - s.a[1]) / (s.b[0] - s.a[0])) <= 0.04 + 1e-12
+
+
 def test_test_terrains_are_steeper_than_train():
     test = fixed_scenarios(CFG, "test")[0].terrain
     s = test.segments[2]

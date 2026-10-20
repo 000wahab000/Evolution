@@ -31,14 +31,16 @@ def test_cpg_modes():
 
     from src.environment import CPG_CLOCK
     rng = np.random.default_rng(0)
-    states = {m: CreatureEnv(cpg_mode=m, cpg_rng=np.random.default_rng(0)).reset()
+    perm = list(np.random.default_rng(0).permutation(30))
+    states = {m: CreatureEnv(cpg_mode=m, cpg_rng=np.random.default_rng(0), cpg_perm=perm).reset()
               for m in ("cpg", "zeros", "noise", "shuffled")}
     assert all(s.shape == (15,) for s in states.values())
     assert tuple(states["cpg"][13:15]) == tuple(np.float32(CPG_CLOCK[0]))
     assert tuple(states["zeros"][13:15]) == (0.0, 0.0)
     assert np.allclose(states["noise"][13:15], rng.uniform(-1, 1, 2))
-    perm = np.random.default_rng(0).permutation(30)
     assert tuple(states["shuffled"][13:15]) == tuple(np.float32(CPG_CLOCK[perm[0]]))
+    with pytest.raises(ValueError):
+        CreatureEnv(cpg_mode="shuffled", cpg_perm=[0] * 30)  # not a permutation
     # every mode leaves the physics part of the state alone
     for s in states.values():
         assert (s[:13] == states["cpg"][:13]).all()

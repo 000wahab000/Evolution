@@ -12,21 +12,41 @@ CPG_CLOCK = tuple(
 CPG_MODES = ("cpg", "zeros", "noise", "shuffled")
 
 
+def run_episode(env, brain, max_steps=600, pose_noise=None, on_step=None):
+    """The one rollout loop: returns (training return incl. -100 on fall, steps, fallen).
+    on_step(env, action) is called after every step, for recording."""
+    state = env.reset(pose_noise=pose_noise)
+    total_reward, steps, done, fallen = 0.0, 0, False, False
+    while not done and steps < max_steps:
+        action = brain.get_action(state)
+        state, reward, done, fallen = env.step(action)
+        total_reward += reward
+        steps += 1
+        if on_step:
+            on_step(env, action)
+    if fallen:
+        total_reward -= 100.0
+    return total_reward, steps, fallen
+
+
 class CreatureEnv:
-    def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1):
+    def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1,
+                 cpg_perm=None):
         """terrain: TerrainSpec (default: the legacy course). cpg_mode replaces state[13:15]:
-        cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (fixed permutation of the
-        30-step table, drawn from cpg_rng). substeps>1 splits each step into that many physics
-        steps of 3/60/substeps; all step counters still count brain steps."""
+        cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (the 30-step table read
+        through cpg_perm, a fixed permutation chosen once per run). substeps>1 splits each step
+        into that many physics steps of 3/60/substeps; all step counters still count brain steps."""
         if cpg_mode not in CPG_MODES:
             raise ValueError(f"cpg_mode must be one of {CPG_MODES}")
-        if cpg_mode in ("noise", "shuffled") and cpg_rng is None:
-            raise ValueError(f"cpg_mode={cpg_mode!r} needs cpg_rng")
+        if cpg_mode == "noise" and cpg_rng is None:
+            raise ValueError("cpg_mode='noise' needs cpg_rng")
+        if cpg_mode == "shuffled" and (cpg_perm is None or sorted(cpg_perm) != list(range(30))):
+            raise ValueError("cpg_mode='shuffled' needs cpg_perm, a permutation of range(30)")
         self.fitness_mode = fitness_mode
         self.terrain = terrain if terrain is not None else legacy_course()
         self.cpg_mode = cpg_mode
         self.cpg_rng = cpg_rng
-        self.cpg_perm = cpg_rng.permutation(30) if cpg_mode == "shuffled" else None
+        self.cpg_perm = list(cpg_perm) if cpg_mode == "shuffled" else None
         self.substeps = int(substeps)
         self.space = pymunk.Space()
         self.space.gravity = (0, 900) 

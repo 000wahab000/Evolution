@@ -1,8 +1,11 @@
 """Optimizers behind one ask/tell interface on flat genome vectors. Fitness: higher is better.
 
 Every genome returned by ask() costs one evaluation (k rollouts), so an antithetic pair
-counts as two. Each optimizer draws only from the Generator it is given.
+counts as two. Each optimizer draws only from the Generator it is given. recommend() is the
+policy the method would deploy: the GA's best individual, the mean for CMA-ES / OpenAI-ES / ARS.
 """
+
+import math
 
 import numpy as np
 
@@ -11,7 +14,7 @@ class GAOptimizer:
     """Population.evolve's operators and hyperparameters on an injected rng (not bit-equal to
     Population, which uses the global random / np.random)."""
 
-    def __init__(self, dim, rng, x0=None, pop_size=50, mutation_rate=0.15, mutation_scale=0.35,
+    def __init__(self, dim, rng, pop_size=50, mutation_rate=0.15, mutation_scale=0.35,
                  elites=5, mutate_only=0.15, init_std=0.25):
         self.rng, self.dim = rng, dim
         self.rate, self.scale, self.mutate_only = mutation_rate, mutation_scale, mutate_only
@@ -20,6 +23,9 @@ class GAOptimizer:
 
     def ask(self):
         return [g.copy() for g in self.pop]
+
+    def recommend(self):
+        return self.pop[0].copy()  # after tell(): the best genome of the last generation
 
     def _mutate(self, g):
         mask = self.rng.random(self.dim) < self.rate
@@ -49,7 +55,8 @@ class CMAESOptimizer:
         import cma
 
         x0 = rng.normal(0.0, 0.25, dim) if x0 is None else x0
-        opts = {"seed": int(rng.integers(1, 2**31)), "verbose": -9}
+        # randn from the injected rng keeps pycma off the global np.random (seed=nan: don't reseed it)
+        opts = {"randn": lambda *shape: rng.standard_normal(shape), "seed": math.nan, "verbose": -9}
         if popsize:
             opts["popsize"] = popsize
         self.es = cma.CMAEvolutionStrategy(x0, sigma0, opts)
@@ -61,6 +68,9 @@ class CMAESOptimizer:
 
     def tell(self, fitnesses):
         self.es.tell(self._asked, [-f for f in fitnesses])  # cma minimizes
+
+    def recommend(self):
+        return np.array(self.es.mean, dtype=float)
 
 
 def _centered_ranks(x):
@@ -93,6 +103,9 @@ class OpenAIESOptimizer:
         m_hat, v_hat = self.m / (1 - self.b1 ** self.t), self.v / (1 - self.b2 ** self.t)
         self.theta = self.theta + self.lr * m_hat / (np.sqrt(v_hat) + 1e-8)  # ascent
 
+    def recommend(self):
+        return self.theta.copy()
+
 
 class RandomSearchOptimizer:
     """Mania et al. 2018 ARS V1: N antithetic directions, step scaled by the reward std."""
@@ -110,6 +123,9 @@ class RandomSearchOptimizer:
         r = np.asarray(fitnesses, dtype=float)
         sigma_r = r.std() or 1.0
         self.theta = self.theta + self.alpha / (self.n * sigma_r) * (r[:self.n] - r[self.n:]) @ self.delta
+
+    def recommend(self):
+        return self.theta.copy()
 
 
 OPTIMIZERS = {"ga": GAOptimizer, "cmaes": CMAESOptimizer, "openai_es": OpenAIESOptimizer,

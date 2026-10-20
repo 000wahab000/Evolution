@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 # pyrefly: ignore [missing-import]
-from src.environment import CreatureEnv
+from src.environment import CreatureEnv, run_episode
 # pyrefly: ignore [missing-import]
 from src.model import CreatureBrain
 
@@ -17,20 +17,7 @@ def evaluate_genome(args):
     brain = CreatureBrain()
     brain.load_state_dict(state_dict)
     env = CreatureEnv(fitness_mode=fitness_mode)
-    state = env.reset()
-    total_reward = 0.0
-    done = False
-    step_count = 0
-
-    while not done and step_count < max_steps:
-        action = brain.get_action(state)
-        state, reward, done, fallen = env.step(action)
-        total_reward += reward
-        step_count += 1
-
-    if fallen:
-        total_reward -= 100.0
-
+    total_reward, step_count, fallen = run_episode(env, brain, max_steps)
     distance = float(env.torso.position.x - 400.0)
     return total_reward, distance, fallen, step_count
 

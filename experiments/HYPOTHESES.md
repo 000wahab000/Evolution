@@ -38,13 +38,27 @@ All other pairs are **exploratory** and are labelled as such in REPORT.md.
 - **Verdict:** *supported* if the Holm-adjusted p < 0.05 **and** the 95% bootstrap CI (10,000
   resamples) of the IQM difference A − B excludes 0 in the predicted direction. *Not supported* if
   both hold in the opposite direction. Otherwise *inconclusive*.
+- **Missing data:** a hypothesis whose variants have no finished runs stays in its Holm family with
+  p = 1 and is reported as *not tested (missing data)*. `analyze.py` refuses an experiment with
+  missing, failed or stale runs unless `--allow-incomplete` is passed, and then REPORT.md lists them.
 - **Effect sizes:** Cliff's delta and P(A > B), reported for every pair.
-- **Champion rule:** each generation's train-best genome is re-scored on validation terrains (train
-  distribution, disjoint from test and control); the champion is the best of those so far. Test and
-  control terrains are never used for selection. M1 is the final champion's mean distance on the
-  10 test terrains.
-- **Budget:** 25,000 training episodes per run. Only train rollouts count; validation, test and
-  control evaluations are tracked separately.
+- **Champion rule:** on the evaluation grid only (every 1,250 episodes, plus once at the end of the
+  budget if that falls between grid points), the optimizer's recommended policy is re-scored on
+  validation terrains (train distribution, disjoint from test and control); the champion is the best
+  of those so far. The recommended policy is the GA's best individual and the search mean for
+  CMA-ES, OpenAI-ES and ARS. Every optimizer gets the same number of picks (20). Test and control
+  terrains are never used for selection. M1 is the final champion's mean distance on the 10 test
+  terrains.
+- **Train distance (M4):** the final champion scored on 5 separate train-distribution terrains
+  (`train_eval`) that never took part in selection, so the overfitting gap is not biased by the pick.
+- **Shuffled control:** the 30-step CPG table is read through one fixed permutation per run
+  (`make_rng(seed, "shuffle")`), the same in every episode.
+- **Fall rate (M2):** mean of the per-seed fall rates, with a 95% bootstrap CI over seeds (episodes
+  within a seed are not independent).
+- **Physics-exploit flag:** per seed. A seed is flagged when its test distance is above 50 px and
+  drops by more than 30% at dt/2; REPORT.md lists flagged seeds per variant.
+- **Budget:** 25,000 training episodes per run. Only train rollouts count; validation, test,
+  control and train_eval evaluations are tracked separately.
 - **Seeds:** 30 per variant (0-29). **Exclusions: none.** A crashed run is rerun, never dropped.
 - **Optimizer settings:** pinned in `experiments/exp2_optimizers.json` (see its `_note`). No per-method
   tuning. The ARS V1 values must be checked against Mania et al. 2018 before the full run.

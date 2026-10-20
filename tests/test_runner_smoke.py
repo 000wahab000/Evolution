@@ -10,7 +10,7 @@ TINY = {
     "name": "tiny", "seeds": [0, 1], "optimizer": "ga", "optimizer_params": {"pop_size": 4},
     "episodes_budget": 24, "rollouts_k": 2, "max_steps": 60, "eval_every_episodes": 8,
     "test_terrain_seeds": [1000, 1001], "control_terrain_seeds": [2000],
-    "validation_terrain_seeds": [3000],
+    "validation_terrain_seeds": [3000], "train_eval_terrain_seeds": [4000],
     "variants": {"cpg": {}, "zeros": {"brain_input": "zeros"}},
     "hypotheses": [{"id": "H1", "a": "cpg", "b": "zeros", "metric": "test_distance",
                     "direction": "greater", "text": "cpg > zeros"}],

@@ -72,9 +72,9 @@ def export(exp_dir, static=STATIC, replays=True):
         "variant": v, "n": d["n"],
         "test": d["test_distance"], "gap_test": d["gap_test"] and d["gap_test"]["iqm"],
         "gap_control": d["gap_control"] and d["gap_control"]["iqm"],
-        "fall_rate": d["fall_pooled"]["rate"], "fall_wilson": d["fall_pooled"]["wilson"],
+        "fall_rate": d["fall"]["mean"], "fall_ci": d["fall"]["ci"],
         "cot": d["cot"] and d["cot"]["iqm"], "episodes_to_tau": d["episodes_to_tau"],
-        "dt2_drop": d["dt2_drop"], "exploit_flag": d["exploit_flag"],
+        "dt2_drop": d["dt2_drop"], "dt2_flagged": d["dt2_flagged"], "exploit_flag": d["exploit_flag"],
     } for v, d in s["variants"].items()]
     pairs = [{k: r[k] for k in ("a", "b", "cliffs_delta", "p_improvement", "p_holm")} for r in s["pairwise"]]
     verdicts = [{k: r[k] for k in ("id", "a", "b", "metric", "direction", "iqm_diff", "diff_ci_lo",

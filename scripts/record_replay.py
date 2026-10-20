@@ -24,7 +24,7 @@ import pymunk
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src.environment import CreatureEnv  # noqa: E402
+from src.environment import CreatureEnv, run_episode  # noqa: E402
 from src.model import CreatureBrain  # noqa: E402
 from src.utils import MODELS_DIR, load_state_dict_file  # noqa: E402
 
@@ -61,26 +61,22 @@ def terrain_polyline(env, x_min=0.0):
     return points
 
 
-def record(name, state_dict=None, env=None, label=None):
-    brain = CreatureBrain()
+def record(name, state_dict=None, env=None, label=None, max_steps=MAX_STEPS):
+    brain = CreatureBrain()  # random init on purpose: the "random" model uses it
     if state_dict is not None:
         brain.load_state_dict(state_dict)
 
     env = env or CreatureEnv(fitness_mode="baseline")
-    state = env.reset()
-    frames, fitness, steps, done, fallen = [], 0.0, 0, False, False
-    while not (done or steps >= MAX_STEPS):
-        action = brain.get_action(state)
-        state, reward, done, fallen = env.step(action)
-        fitness += reward
-        steps += 1
+    frames = []
+
+    def on_step(env, action):
         frame = [round(env.torso.position.x, 2), round(env.torso.position.y, 2), round(env.torso.angle, 3)]
         for leg in env.legs:
             frame += [round(leg.position.x, 2), round(leg.position.y, 2), round(leg.angle, 3)]
         frame += [round(float(a), 2) for a in action] + [round(env.torso.velocity.x, 1)]
         frames.append(frame)
-    if fallen:
-        fitness -= 100.0  # same penalty as evaluate_genome
+
+    fitness, steps, fallen = run_episode(env, brain, max_steps, on_step=on_step)
 
     terrain = terrain_polyline(env)
     return {
@@ -103,19 +99,18 @@ def record(name, state_dict=None, env=None, label=None):
 
 
 def record_champion(champion_path, label=None):
-    """Replay a run's champion.npz with the run's brain input on its first test terrain."""
-    from src.research.config import RunConfig, make_rng
-    from src.research.evaluate import fixed_scenarios
+    """Replay a run's champion.npz exactly as the metrics saw it: the run's brain input (and
+    shuffle permutation) on its first test terrain."""
+    from src.research.config import RunConfig
+    from src.research.evaluate import fixed_scenarios, make_env
 
     with open(os.path.join(os.path.dirname(champion_path), "config.json"), encoding="utf-8") as f:
         cfg_dict = json.load(f)
     cfg_dict.pop("schema_version", None)
     cfg = RunConfig(**cfg_dict)
-    scenario = fixed_scenarios(cfg, "test")[0]
-    env = CreatureEnv(terrain=scenario.terrain, cpg_mode=cfg.brain_input,
-                      cpg_rng=make_rng(scenario.cpg_seed, "cpg"))
+    env = make_env(cfg, fixed_scenarios(cfg, "test")[0])
     return record(cfg.run_id, load_state_dict_file(champion_path), env,
-                  label or f"{cfg.experiment} / {cfg.variant} / seed {cfg.seed} champion")
+                  label or f"{cfg.experiment} / {cfg.variant} / seed {cfg.seed} champion", cfg.max_steps)
 
 
 def save(replay, path):

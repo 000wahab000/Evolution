@@ -875,6 +875,8 @@
     }
 
     function setLive(on) {
+      // The server only streams dashboard models; a watched experiment champion is a replay path
+      if (on && currentModel.includes('/')) switchModel('best');
       liveMode = on;
       const btn = document.getElementById('btnLive');
       btn.classList.toggle('active', on);
@@ -960,7 +962,9 @@
       const now = performance.now();
       if (now - lastSummaryAt < 1000) return;
       lastSummaryAt = now;
-      const model = document.querySelector('.btn[data-model].active').textContent;
+      // No model button is active while an experiment champion plays; fall back to its label
+      const active = document.querySelector('.btn[data-model].active');
+      const model = active ? active.textContent : (replay && replay.label) || currentModel;
       const meters = (data.distance_meters || (data.distance || 0) * 0.02).toFixed(2);
       setText('simSummary', `${model} model${liveMode ? ' (live)' : ' (recorded replay)'}: ${meters} m travelled, step ${data.steps || 0} of 600, ${data.fallen ? 'fallen' : 'upright'}.`);
     }
@@ -1299,15 +1303,18 @@
       loadExperiment(list[0].name);
     }
 
+    let expRequest = 0; // only the newest selection may render
     async function loadExperiment(name) {
+      const req = ++expRequest;
       setText('expStatus', `Loading ${name}…`);
       const base = `/static/experiments/${encodeURIComponent(name)}`;
       try {
         const [idx, curves, runs] = await Promise.all(['index', 'curves', 'runs'].map(f => getJSON(`${base}/${f}.json`)));
+        if (req !== expRequest) return;
         renderExperiment(base, idx, curves, runs);
         setText('expStatus', `${idx.experiment} · exported ${idx.exported_utc.slice(0, 10)}`);
       } catch (e) {
-        expFailed(() => loadExperiment(name));
+        if (req === expRequest) expFailed(() => loadExperiment(name));
       }
     }
 
@@ -1367,13 +1374,13 @@
 
       document.getElementById('expSummary').innerHTML =
         '<thead><tr><th scope="col">Variant</th><th scope="col">Seeds</th><th scope="col">Test distance px [95% CI]</th><th scope="col">Fall rate</th>' +
-        '<th scope="col">Gap train−test / −control</th><th scope="col">Cost of transport</th><th scope="col">Runs reaching τ</th><th scope="col">dt/2 drop</th></tr></thead><tbody>' +
+        '<th scope="col">Gap train−test / −control</th><th scope="col">Cost of transport</th><th scope="col">Runs reaching τ</th><th scope="col">dt/2 drop (seeds flagged)</th></tr></thead><tbody>' +
         idx.summary.map(s => `<tr><th scope="row">${swatch(s.variant)}${escapeHtml(s.variant)}</th><td>${s.n}</td>
           <td>${s.test ? `${fmt(s.test.iqm)} [${fmt(s.test.ci[0])}, ${fmt(s.test.ci[1])}]` : '—'}</td>
-          <td>${fmt(s.fall_rate, 2)} [${fmt(s.fall_wilson[0], 2)}, ${fmt(s.fall_wilson[1], 2)}]</td>
+          <td>${fmt(s.fall_rate, 2)} [${fmt(s.fall_ci[0], 2)}, ${fmt(s.fall_ci[1], 2)}]</td>
           <td>${fmt(s.gap_test)} / ${fmt(s.gap_control)}</td><td>${fmt(s.cot, 2)}</td>
           <td>${s.episodes_to_tau.reached}/${s.episodes_to_tau.of}</td>
-          <td>${s.dt2_drop === null ? '—' : `${(s.dt2_drop * 100).toFixed(0)}%${s.exploit_flag ? ' ⚠ possible exploit' : ''}`}</td></tr>`).join('') + '</tbody>';
+          <td>${s.dt2_drop === null ? '—' : `${(s.dt2_drop * 100).toFixed(0)}%`} (${s.dt2_flagged.seeds.length}/${s.dt2_flagged.of}${s.exploit_flag ? ' ⚠ possible exploit' : ''})</td></tr>`).join('') + '</tbody>';
 
       setText('capF5', idx.captions.F5);
       const cell = (a, b) => {

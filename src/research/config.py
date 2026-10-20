@@ -33,6 +33,9 @@ class RunConfig:
     test_terrain_seeds: list = field(default_factory=lambda: list(range(1000, 1010)))
     control_terrain_seeds: list = field(default_factory=lambda: list(range(2000, 2005)))
     validation_terrain_seeds: list = field(default_factory=lambda: list(range(3000, 3005)))
+    # Train-distribution terrains used only to score the final champion's train distance (M4),
+    # never for selection, so the overfitting gap is not biased by the champion pick.
+    train_eval_terrain_seeds: list = field(default_factory=lambda: list(range(4000, 4005)))
 
     @property
     def run_id(self):

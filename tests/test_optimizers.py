@@ -42,6 +42,23 @@ def test_deterministic_per_seed(name):
     assert run(name, 400, seed=3) != run(name, 400, seed=4)
 
 
+@pytest.mark.parametrize("name", sorted(OPTIMIZERS))
+def test_isolated_from_global_rng(name):
+    """Other code drawing from np.random (e.g. CreatureBrain() init) must not change a run."""
+    a = run(name, 400, seed=5)
+    np.random.seed(123)
+    np.random.rand(1000)
+    b = run(name, 400, seed=5)
+    assert a == b
+
+
+@pytest.mark.parametrize("name", sorted(OPTIMIZERS))
+def test_recommend_is_a_genome(name):
+    opt = make_optimizer(name, 10, SMALL[name], make_rng(0))
+    opt.tell([sphere(g) for g in opt.ask()])
+    assert np.asarray(opt.recommend()).shape == (10,)
+
+
 def test_antithetic_pairs_count_as_two():
     for name in ("openai_es", "random_search"):
         opt = make_optimizer(name, 10, SMALL[name], make_rng(0))

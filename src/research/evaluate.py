@@ -1,20 +1,22 @@
 """Rollouts on sampled terrains with seeded perturbations, and the raw metrics per episode.
 
 A scenario fixes everything random about one episode (terrain, friction, pose noise, CPG
-noise seed), so all genomes of a generation can share the same k scenarios.
+noise seed), so all genomes of a generation can share the same k scenarios. The `shuffled`
+CPG permutation is fixed per run (shuffle_perm), not per episode.
 """
 
 from dataclasses import dataclass
 
 import numpy as np
 
-from src.environment import CreatureEnv
+from src.environment import CreatureEnv, run_episode
 from src.model import CreatureBrain
 from src.research.config import make_rng
 from src.terrain import legacy_course, random_course
 
 SPAWN_X = 400.0
-SPLITS = ("train", "validation", "test", "control")
+# Order matters: the index seeds each split's terrain stream. Append only.
+SPLITS = ("train", "validation", "test", "control", "train_eval")
 SHAPES = {"w1": (16, 15), "b1": (16,), "w2": (4, 16), "b2": (4,)}
 DIM = sum(int(np.prod(s)) for s in SHAPES.values())  # 324
 
@@ -30,11 +32,6 @@ def from_flat(vec):
         out[k] = np.asarray(vec[i:i + n], dtype=np.float32).reshape(shape)
         i += n
     return out
-
-
-def init_genome(rng):
-    """Same distribution as CreatureBrain(): N(0, 0.25) for every weight and bias."""
-    return rng.normal(0.0, 0.25, DIM)
 
 
 @dataclass(frozen=True)
@@ -83,39 +80,42 @@ def fixed_scenarios(cfg, split):
     return [Scenario(split_terrain(cfg, split, s), cpg_seed=int(s)) for s in seeds]
 
 
-def rollout(params, brain_input, scenario, max_steps=600, substeps=1, record=False):
+def shuffle_perm(cfg):
+    """The run's fixed permutation of the 30-step CPG table (only used by brain_input=shuffled)."""
+    return make_rng(cfg.seed, "shuffle").permutation(30).tolist() if cfg.brain_input == "shuffled" else None
+
+
+def make_env(cfg, scenario, substeps=1):
+    return CreatureEnv(terrain=scenario.terrain.scaled_friction(scenario.friction_scale),
+                       cpg_mode=cfg.brain_input, cpg_rng=make_rng(scenario.cpg_seed, "cpg"),
+                       cpg_perm=shuffle_perm(cfg), substeps=substeps)
+
+
+def rollout(params, cfg, scenario, substeps=1, record=False):
     """One episode. Returns distance, fell, steps, energy (sum |action|), cot, return (the
-    training reward incl. -100 on fall), plus leg angles / CPG phase when record=True."""
-    brain = CreatureBrain()
-    brain.load_state_dict(params if isinstance(params, dict) else from_flat(params))
-    env = CreatureEnv(terrain=scenario.terrain.scaled_friction(scenario.friction_scale),
-                      cpg_mode=brain_input, cpg_rng=make_rng(scenario.cpg_seed, "cpg"),
-                      substeps=substeps)
-    state = env.reset(pose_noise=scenario.pose_noise)
-    ret, energy, steps, done, fallen, legs = 0.0, 0.0, 0, False, False, []
-    while not done and steps < max_steps:
-        action = brain.get_action(state)
-        state, reward, done, fallen = env.step(action)
-        ret += reward
-        energy += float(np.abs(action).sum())
-        steps += 1
+    training reward incl. -100 on fall), plus per-step leg angles when record=True."""
+    brain = CreatureBrain.from_state_dict(params if isinstance(params, dict) else from_flat(params))
+    env = make_env(cfg, scenario, substeps)
+    energy, legs = [0.0], []
+
+    def on_step(env, action):
+        energy[0] += float(np.abs(action).sum())
         if record:
             legs.append([leg.angle - env.torso.angle for leg in env.legs])
-    if fallen:
-        ret -= 100.0
+
+    ret, steps, fallen = run_episode(env, brain, cfg.max_steps, scenario.pose_noise, on_step)
     distance = float(env.torso.position.x - SPAWN_X)
-    out = {"distance": distance, "fell": bool(fallen), "steps": steps, "energy": energy,
-           "cot": energy / distance if distance > 0 else float("nan"), "return": ret}
+    out = {"distance": distance, "fell": bool(fallen), "steps": steps, "energy": energy[0],
+           "cot": energy[0] / distance if distance > 0 else float("nan"), "return": ret}
     if record:
         out["leg_angles"] = np.array(legs)
-        out["cpg_phase"] = np.arange(1, steps + 1) % 30
     return out
 
 
 def evaluate_genome(params, cfg, scenarios, counter=None, substeps=1):
     """Mean training reward over the scenarios plus per-rollout metrics.
     Pass counter only for train-split rollouts; held-out evals never touch the budget."""
-    rolls = [rollout(params, cfg.brain_input, s, cfg.max_steps, substeps) for s in scenarios]
+    rolls = [rollout(params, cfg, s, substeps) for s in scenarios]
     if counter is not None:
         counter.add(len(rolls))
     return float(np.mean([r["return"] for r in rolls])), rolls

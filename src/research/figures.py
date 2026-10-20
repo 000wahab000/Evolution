@@ -254,14 +254,14 @@ def f10_falls(summary, sty):
         fig, ax = plt.subplots(figsize=(6, 3.8))
         names = [v for v in sty if v in summary]
         for i, v in enumerate(names):
-            f = summary[v]["fall_pooled"]
-            lo, hi = f["wilson"]
-            ax.bar(i, f["rate"], color=sty[v]["color"], hatch=["", "//", "..", "xx", "\\\\", "--"][i % 6],
+            f = summary[v]["fall"]
+            lo, hi = f["ci"]
+            ax.bar(i, f["mean"], color=sty[v]["color"], hatch=["", "//", "..", "xx", "\\\\", "--"][i % 6],
                    edgecolor=THEMES[theme]["bg"])
-            ax.errorbar(i, f["rate"], yerr=[[max(0, f["rate"] - lo)], [max(0, hi - f["rate"])]], color=THEMES[theme]["fg"],
+            ax.errorbar(i, f["mean"], yerr=[[max(0, f["mean"] - lo)], [max(0, hi - f["mean"])]], color=THEMES[theme]["fg"],
                         capsize=5)
         ax.set_xticks(range(len(names)), names)
-        ax.set(title="F10 Fall rate on test terrains (95% Wilson CI)", ylabel="fraction of episodes",
+        ax.set(title="F10 Fall rate on test terrains (mean per seed, 95% CI over seeds)", ylabel="fraction of episodes",
                ylim=(0, 1))
         return fig
     return draw
