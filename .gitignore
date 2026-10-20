@@ -24,3 +24,6 @@ package.json
 data/logs/dashboard.html
 data/logs/evolution_graph.png
 data/logs/evolution_all_runs.png
+
+# Experiment outputs: publish a finished experiment once with git add -f (see scripts/verify_results.py)
+results/
