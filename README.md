@@ -56,12 +56,14 @@ Mutation: per-parameter random mask (rate 0.15) with Gaussian noise (scale 0.35)
 
 ## The terrain
 
-Flat ground from spawn (x=400) to x=600. Then, as `terrain_changing()` builds it today:
+Flat ground from spawn (x=400) to x=600. Then, as `legacy_course()` in `src/terrain.py` builds it (the default, kept bug-for-bug so old models and replays still match):
 - **Uphill** from x=600 to x=1600 (40px rise over 1000px)
 - A 40px drop at x=1600, then a **second uphill** to x=2600 (meant to be a downhill: the second segment reuses the uphill's formula)
 - Another 40px drop at x=2600 back to the flat ground, which ends at x=3000
 
 There's no goal check in the env: an episode ends after 600 steps, a fall, or getting stuck. The best walker currently reaches about x=900, partway up the first hill.
+
+`fixed_course()` is the intended course with a real downhill. Experiments use `random_course()`: seeded piecewise-linear courses (train/control slopes up to 4%, test slopes 5-8%).
 
 ---
 
@@ -108,6 +110,17 @@ python scripts/record_replay.py
 python scripts/plot_logs.py
 python scripts/plot_logs.py --live  # tails an active run
 ```
+
+**Research experiments** (laptop-only extras: scipy, cma, matplotlib):
+```bash
+pip install -e .[research]
+python scripts/run_experiment.py experiments/smoke.json --workers 2   # about 2 minutes
+python scripts/analyze.py results/smoke                               # stats, F1-F10, REPORT.md
+python scripts/run_experiment.py experiments/exp1_cpg.json --workers 6  # overnight: 120 runs
+python scripts/verify_results.py results/exp1_cpg                     # before publishing to git
+python scripts/export_dashboard.py results/exp1_cpg                   # dashboard Experiments tab
+```
+Each run writes `results/<exp>/<variant>/seed_<n>/` and is skipped once it has `DONE`, so an interrupted experiment resumes where it stopped. Hypotheses and the analysis plan are pre-registered in `experiments/HYPOTHESES.md`; tag it before the first full run.
 
 **Docker:**
 ```bash

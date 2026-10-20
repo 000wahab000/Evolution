@@ -3,7 +3,7 @@ import pymunk
 
 from src.environment import CreatureEnv
 from src.model import CreatureBrain
-from src.terrain import fixed_course, legacy_course, random_course
+from src.terrain import fixed_course, random_course
 from src.utils import UNIVERSAL_BEST_PATH, load_state_dict_file
 
 
