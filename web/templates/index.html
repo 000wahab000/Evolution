@@ -512,6 +512,28 @@
       .viewport-tools { top: auto; bottom: 10px; } /* keep clear of the HUD chips */
     }
 
+    /* Experiments tab */
+    .exp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .exp-head select { background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-light); padding: 0.35rem 0.5rem; font-family: inherit; }
+    .exp-status { color: var(--text-muted); font-size: 0.75rem; }
+    .exp-h { font-size: 0.8rem; margin: 1.25rem 0 0.5rem; color: var(--text-main); }
+    .exp-cap { font-size: 0.75rem; color: var(--text-sub); margin: 0.35rem 0; }
+    .exp-verdicts { list-style: none; padding: 0; margin: 0; font-size: 0.78rem; }
+    .exp-verdicts li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+    .verdict { font-weight: 700; padding: 0 0.35rem; border: 1px solid currentColor; border-radius: 3px; }
+    .verdict.supported { color: var(--green); }
+    .verdict.not-supported { color: #f87171; }
+    .verdict.inconclusive { color: var(--text-sub); }
+    .table-wrap { overflow-x: auto; max-width: 100%; }
+    .exp-table { border-collapse: collapse; font-size: 0.75rem; min-width: 100%; }
+    .exp-table th, .exp-table td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; text-align: right; white-space: nowrap; }
+    .exp-table th:first-child, .exp-table td:first-child { text-align: left; }
+    .exp-matrix td { text-align: center; color: #ffffff; }
+    .exp-fig { border: 1px solid var(--border); margin: 0.5rem 0; padding: 0.5rem 0.75rem; }
+    .exp-fig summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    .exp-fig img { display: block; max-width: 100%; max-height: 520px; height: auto; margin-top: 0.5rem; }
+    .swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.35rem; vertical-align: middle; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; animation: none !important; }
     }
@@ -571,7 +593,7 @@
           </div>
         </div>
 
-        <div class="viewport" id="viewport">
+        <div class="viewport" id="viewport" tabindex="-1">
           <canvas id="simCanvas" role="img" aria-label="2D view of the physics simulation: a quadruped walker (white torso, blue rear legs, green front legs) moving right along the terrain, marked in pixels"></canvas>
           <canvas id="sim3d" role="img" aria-label="3D view of the physics simulation: a quadruped walker (white torso, blue rear legs, green front legs) moving right along the terrain, with distance ticks every 100 pixels" hidden></canvas>
           <p class="sr-only" id="simSummary">Loading the recorded replay.</p>
@@ -671,6 +693,7 @@
         <button class="tab-btn active" role="tab" id="tabbtn-chart" data-tab="chart" aria-selected="true" aria-controls="tab-chart" onclick="switchTab('chart')"><span aria-hidden="true">📈</span> Convergence &amp; Diversity</button>
         <button class="tab-btn" role="tab" id="tabbtn-logs" data-tab="logs" aria-selected="false" aria-controls="tab-logs" tabindex="-1" onclick="switchTab('logs')"><span aria-hidden="true">📜</span> Live Evolution Logs</button>
         <button class="tab-btn" role="tab" id="tabbtn-models" data-tab="models" aria-selected="false" aria-controls="tab-models" tabindex="-1" onclick="switchTab('models')"><span aria-hidden="true">💾</span> Model Checkpoints</button>
+        <button class="tab-btn" role="tab" id="tabbtn-experiments" data-tab="experiments" aria-selected="false" aria-controls="tab-experiments" tabindex="-1" onclick="switchTab('experiments')"><span aria-hidden="true">🧪</span> Experiments</button>
       </div>
 
       <!-- Tab 1: Chart -->
@@ -711,6 +734,41 @@
             </div>
             <a href="/api/models/download/top_0.npz" class="btn btn-sm">Download<span class="sr-only"> top_0.npz</span></a>
           </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Experiments (static bundle from scripts/export_dashboard.py) -->
+      <div class="tab-content" id="tab-experiments" role="tabpanel" aria-labelledby="tabbtn-experiments">
+        <div class="exp-head">
+          <label for="expSelect" id="expSelectLabel" hidden>Experiment</label>
+          <select id="expSelect" hidden onchange="loadExperiment(this.value)"></select>
+          <span id="expStatus" class="exp-status" role="status" aria-live="polite">Open this tab to load experiments.</span>
+          <button class="btn btn-sm" id="expRetry" hidden>Retry</button>
+        </div>
+        <div id="expBody" hidden>
+          <h3 class="exp-h">Pre-registered hypotheses</h3>
+          <ul class="exp-verdicts" id="expVerdicts"></ul>
+
+          <h3 class="exp-h">F1 Learning curves (test terrains)</h3>
+          <div class="chart-panel"><canvas id="expF1" role="img" aria-label="Line chart: champion test distance versus training episodes per variant, with 95% confidence bands"></canvas></div>
+          <p class="exp-cap" id="capF1"></p>
+
+          <h3 class="exp-h">F2 Final test distance per seed</h3>
+          <div class="chart-panel"><canvas id="expF2" role="img" aria-label="Dot plot: final test distance of every seed per variant, with the interquartile mean marked"></canvas></div>
+          <p class="exp-cap" id="capF2"></p>
+
+          <h3 class="exp-h">Watch the difference</h3>
+          <p class="exp-cap">Plays each variant's median-seed champion on the same test terrain in the viewer above.</p>
+          <div class="btn-group exp-watch" id="expWatch"></div>
+
+          <h3 class="exp-h">Summary (IQM across seeds, test terrains)</h3>
+          <div class="table-wrap"><table class="exp-table" id="expSummary"></table></div>
+
+          <h3 class="exp-h">F5 Is the row better than the column?</h3>
+          <p class="exp-cap" id="capF5"></p>
+          <div class="table-wrap"><table class="exp-table exp-matrix" id="expMatrix"></table></div>
+
+          <div id="expFigures"></div>
         </div>
       </div>
     </section>
@@ -794,7 +852,7 @@
       replay = data;
       terrainPts = data.terrain;
       restartSim();
-      setText('simSource', `Recorded replay: ${data.distance.toFixed(0)} px in ${data.steps} steps${data.fallen ? ', fell' : ''} · ${data.fps} fps · ${data.recorded_at.slice(0, 10)}`);
+      setText('simSource', `${data.label ? data.label + ' · ' : ''}Recorded replay: ${data.distance.toFixed(0)} px in ${data.steps} steps${data.fallen ? ', fell' : ''} · ${data.fps} fps · ${data.recorded_at.slice(0, 10)}`);
     }
 
     function connectStream(model) {
@@ -1196,7 +1254,166 @@
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       const activeEl = document.getElementById(`tab-${tabId}`);
       if (activeEl) activeEl.classList.add('active');
+      if (tabId === 'experiments' && !expLoaded) loadExperimentList();
     }
+
+    // ── Experiments tab: static bundle from scripts/export_dashboard.py, no server work ──
+    let expLoaded = false;
+    let expCharts = [];
+    const FIG_TITLES = { F3: 'Generalization gap', F4: 'Performance profile', F6: 'Sample efficiency',
+      F7: 'Robustness (friction, pose noise, dt/2)', F8: 'Efficiency trade-off', F9: 'Gait and CPG lock', F10: 'Fall rate' };
+    const escAttr = s => escapeHtml(String(s)).replace(/"/g, '&quot;');
+    const fmt = (x, nd = 1) => (x === null || x === undefined || Number.isNaN(x)) ? '—' : Number(x).toFixed(nd);
+
+    function expFailed(retry) {
+      setText('expStatus', 'Experiment data failed to load.');
+      const btn = document.getElementById('expRetry');
+      btn.hidden = false;
+      btn.onclick = () => { btn.hidden = true; retry(); };
+    }
+
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status });
+      return r.json();
+    }
+
+    async function loadExperimentList() {
+      expLoaded = true;
+      setText('expStatus', 'Loading experiments…');
+      let list;
+      try {
+        list = (await getJSON('/static/experiments/index.json')).experiments || [];
+      } catch (e) {
+        if (e.status === 404) list = [];
+        else return expFailed(loadExperimentList);
+      }
+      if (!list.length) {
+        setText('expStatus', 'No experiments published yet. Run scripts/analyze.py, then scripts/export_dashboard.py results/<experiment>.');
+        return;
+      }
+      const sel = document.getElementById('expSelect');
+      sel.innerHTML = list.map(e => `<option value="${escAttr(e.name)}">${escapeHtml(e.name)} (${escapeHtml(e.exported_utc)})</option>`).join('');
+      sel.hidden = false;
+      document.getElementById('expSelectLabel').hidden = false;
+      loadExperiment(list[0].name);
+    }
+
+    async function loadExperiment(name) {
+      setText('expStatus', `Loading ${name}…`);
+      const base = `/static/experiments/${encodeURIComponent(name)}`;
+      try {
+        const [idx, curves, runs] = await Promise.all(['index', 'curves', 'runs'].map(f => getJSON(`${base}/${f}.json`)));
+        renderExperiment(base, idx, curves, runs);
+        setText('expStatus', `${idx.experiment} · exported ${idx.exported_utc.slice(0, 10)}`);
+      } catch (e) {
+        expFailed(() => loadExperiment(name));
+      }
+    }
+
+    function renderExperiment(base, idx, curves, runs) {
+      document.getElementById('expBody').hidden = false;
+      const names = Object.keys(idx.style);
+      const st = idx.style;
+      const swatch = v => `<span class="swatch" style="background:${escAttr(st[v].color)}" aria-hidden="true"></span>`;
+
+      document.getElementById('expVerdicts').innerHTML = idx.verdicts.length ? idx.verdicts.map(h =>
+        `<li><strong>${escapeHtml(h.id)}</strong> ${escapeHtml(h.a)} ${h.direction === 'less' ? '&lt;' : '&gt;'} ${escapeHtml(h.b)}
+         on ${escapeHtml(h.metric.replace('_', ' '))}: <span class="verdict ${escAttr(h.verdict.replace(' ', '-'))}">${escapeHtml(h.verdict)}</span>
+         <span class="exp-cap">IQM diff ${fmt(h.iqm_diff)} px [${fmt(h.diff_ci_lo)}, ${fmt(h.diff_ci_hi)}], Holm p ${fmt(h.p_holm, 3)}</span></li>`).join('')
+        : '<li>No hypotheses in this experiment.</li>';
+
+      expCharts.forEach(c => c.destroy());
+      expCharts = [];
+      const axis = { ticks: { color: '#a1a1aa' }, grid: { color: '#27272a' } };
+      const f1 = [];
+      names.forEach(v => {
+        const c = curves[v];
+        if (!c) return;
+        f1.push({ label: `${v} lo`, data: c.lo, borderWidth: 0, pointRadius: 0, fill: false });
+        f1.push({ label: `${v} 95% CI`, data: c.hi, borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: st[v].color + '30' });
+        f1.push({ label: v, data: c.iqm, borderColor: st[v].color, borderDash: st[v].chartDash, borderWidth: 2, pointRadius: 0, fill: false });
+      });
+      expCharts.push(new Chart(document.getElementById('expF1'), {
+        type: 'line', data: { labels: curves.episodes, datasets: f1 },
+        options: { responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { labels: { color: '#fafafa', filter: i => names.includes(i.text) } } },
+          scales: { x: { ...axis, title: { display: true, text: 'training episodes', color: '#a1a1aa' } },
+                    y: { ...axis, title: { display: true, text: 'test distance (px)', color: '#a1a1aa' } } } }
+      }));
+
+      const pointStyles = { o: 'circle', s: 'rect', '^': 'triangle', D: 'rectRot', v: 'triangle', P: 'crossRot' };
+      const f2 = names.flatMap((v, i) => {
+        const pts = (runs[v] || []).map((r, j, a) => ({ x: i + (a.length > 1 ? (j / (a.length - 1) - 0.5) * 0.3 : 0), y: r.test }));
+        const row = idx.summary.find(s => s.variant === v);
+        return [
+          { label: v, data: pts, backgroundColor: st[v].color, pointStyle: pointStyles[st[v].marker] || 'circle', pointRadius: 4 },
+          { label: `${v} IQM`, data: row && row.test ? [{ x: i, y: row.test.iqm }] : [], pointStyle: 'line', pointRadius: 18, borderColor: '#fafafa', borderWidth: 2 },
+        ];
+      });
+      expCharts.push(new Chart(document.getElementById('expF2'), {
+        type: 'scatter', data: { datasets: f2 },
+        options: { responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { labels: { color: '#fafafa', filter: i => names.includes(i.text) } } },
+          scales: { x: { ...axis, min: -0.6, max: names.length - 0.4, ticks: { color: '#a1a1aa', stepSize: 1, callback: x => names[x] ?? '' } },
+                    y: { ...axis, title: { display: true, text: 'test distance (px)', color: '#a1a1aa' } } } }
+      }));
+      setText('capF1', idx.captions.F1);
+      setText('capF2', 'One dot per seed on the test terrains; the white bar marks each variant\'s IQM.');
+
+      document.getElementById('expWatch').innerHTML = names.map(v => idx.replays[v]
+        ? `<button class="btn btn-sm" onclick="watchChampion('${escAttr(idx.replays[v])}')">${swatch(v)}Watch ${escapeHtml(v)}</button>`
+        : `<button class="btn btn-sm" disabled title="No replay exported for ${escAttr(v)}">${swatch(v)}${escapeHtml(v)}</button>`).join('');
+
+      document.getElementById('expSummary').innerHTML =
+        '<thead><tr><th scope="col">Variant</th><th scope="col">Seeds</th><th scope="col">Test distance px [95% CI]</th><th scope="col">Fall rate</th>' +
+        '<th scope="col">Gap train−test / −control</th><th scope="col">Cost of transport</th><th scope="col">Runs reaching τ</th><th scope="col">dt/2 drop</th></tr></thead><tbody>' +
+        idx.summary.map(s => `<tr><th scope="row">${swatch(s.variant)}${escapeHtml(s.variant)}</th><td>${s.n}</td>
+          <td>${s.test ? `${fmt(s.test.iqm)} [${fmt(s.test.ci[0])}, ${fmt(s.test.ci[1])}]` : '—'}</td>
+          <td>${fmt(s.fall_rate, 2)} [${fmt(s.fall_wilson[0], 2)}, ${fmt(s.fall_wilson[1], 2)}]</td>
+          <td>${fmt(s.gap_test)} / ${fmt(s.gap_control)}</td><td>${fmt(s.cot, 2)}</td>
+          <td>${s.episodes_to_tau.reached}/${s.episodes_to_tau.of}</td>
+          <td>${s.dt2_drop === null ? '—' : `${(s.dt2_drop * 100).toFixed(0)}%${s.exploit_flag ? ' ⚠ possible exploit' : ''}`}</td></tr>`).join('') + '</tbody>';
+
+      setText('capF5', idx.captions.F5);
+      const cell = (a, b) => {
+        if (a === b) return '<td aria-label="same variant">—</td>';
+        const p = idx.pairs.find(r => (r.a === a && r.b === b) || (r.a === b && r.b === a));
+        if (!p) return '<td>—</td>';
+        const flip = p.a !== a;
+        const d = flip ? -p.cliffs_delta : p.cliffs_delta;
+        const pi = flip ? 1 - p.p_improvement : p.p_improvement;
+        const sig = p.p_holm < 0.05;
+        const bg = d >= 0 ? `rgba(0,114,178,${Math.abs(d) * 0.85})` : `rgba(213,94,0,${Math.abs(d) * 0.85})`;
+        return `<td style="background:${bg}" aria-label="${escAttr(a)} versus ${escAttr(b)}: Cliff's delta ${d.toFixed(2)}, probability ${escAttr(a)} is better ${pi.toFixed(2)}${sig ? ', significant after Holm correction' : ''}">${d >= 0 ? '+' : ''}${d.toFixed(2)}${sig ? '*' : ''}<br>P=${pi.toFixed(2)}</td>`;
+      };
+      document.getElementById('expMatrix').innerHTML =
+        `<thead><tr><th scope="col">row \\ column</th>${names.map(v => `<th scope="col">${escapeHtml(v)}</th>`).join('')}</tr></thead><tbody>` +
+        names.map(a => `<tr><th scope="row">${escapeHtml(a)}</th>${names.map(b => cell(a, b)).join('')}</tr>`).join('') + '</tbody>';
+
+      const figs = document.getElementById('expFigures');
+      figs.innerHTML = Object.entries(idx.figures).sort((x, y) => parseInt(x[0].slice(1)) - parseInt(y[0].slice(1))).map(([f, file]) =>
+        `<details class="exp-fig"><summary>${f} ${escapeHtml(FIG_TITLES[f] || '')}</summary>
+          <p class="exp-cap">${escapeHtml(idx.captions[f] || '')}</p>
+          <img data-src="${escAttr(`${base}/${file}`)}" alt="${escAttr(`${f}: ${idx.captions[f] || ''}`)}"></details>`).join('');
+      figs.querySelectorAll('details').forEach(d => d.addEventListener('toggle', () => {
+        const img = d.querySelector('img');
+        if (d.open && !img.src) {
+          img.onerror = () => { img.replaceWith(Object.assign(document.createElement('p'), { className: 'exp-cap', textContent: 'Figure failed to load; the caption above describes it.' })); };
+          img.src = img.dataset.src;
+        }
+      }));
+    }
+
+    // Plays an exported median-seed champion in the main viewer
+    function watchChampion(path) {
+      if (liveMode) setLive(false);
+      switchModel(path);
+      const vp = document.getElementById('viewport');
+      vp.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'center' });
+      vp.focus({ preventScroll: true });
+    }
+
 
     // Arrow/Home/End move between tabs (WAI-ARIA tabs pattern)
     document.querySelector('.tabs-bar').addEventListener('keydown', e => {
