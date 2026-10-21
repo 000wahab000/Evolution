@@ -1,0 +1,106 @@
+{
+  "name": "exp2_optimizers",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "brain_input": "cpg",
+  "episodes_budget": 25000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 1250,
+  "_note": "Pinned settings. cmaes: pycma defaults, sigma0=0.35 (GA mutation scale; pycma has no default). openai_es: Salimans et al. 2017 (sigma 0.02, Adam lr 0.01, L2 0.005). random_search: ARS V1 (Mania et al. 2018) N=8, step 0.02, noise 0.03 - CHECK against the paper's tables before the full run and record the table in HYPOTHESES.md.",
+  "variants": {
+    "ga": {
+      "optimizer": "ga",
+      "optimizer_params": {
+        "pop_size": 50
+      }
+    },
+    "cmaes": {
+      "optimizer": "cmaes",
+      "optimizer_params": {
+        "sigma0": 0.35
+      }
+    },
+    "openai_es": {
+      "optimizer": "openai_es",
+      "optimizer_params": {
+        "pop_size": 50,
+        "sigma": 0.02,
+        "lr": 0.01,
+        "weight_decay": 0.005
+      }
+    },
+    "random_search": {
+      "optimizer": "random_search",
+      "optimizer_params": {
+        "n_directions": 8,
+        "step_size": 0.02,
+        "noise": 0.03
+      }
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H4",
+      "a": "cmaes",
+      "b": "ga",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "CMA-ES > GA in held-out distance at an equal episode budget; a non-significant result is inconclusive."
+    },
+    {
+      "id": "H5a",
+      "a": "ga",
+      "b": "random_search",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "ga beats random search (sanity floor)."
+    },
+    {
+      "id": "H5b",
+      "a": "cmaes",
+      "b": "random_search",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "cmaes beats random search (sanity floor)."
+    },
+    {
+      "id": "H5c",
+      "a": "openai_es",
+      "b": "random_search",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "openai_es beats random search (sanity floor)."
+    }
+  ],
+  "hypotheses_tag": ""
+}

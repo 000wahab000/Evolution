@@ -10,6 +10,13 @@ class CreatureBrain:
         self.w2 = np.random.normal(0, 0.25, (output_size, 16)).astype(np.float32)
         self.b2 = np.random.normal(0, 0.25, output_size).astype(np.float32)
 
+    @classmethod
+    def from_state_dict(cls, state_dict):
+        """Build a brain from weights without drawing from the global np.random."""
+        brain = cls.__new__(cls)
+        brain.load_state_dict(state_dict)
+        return brain
+
     def get_action(self, state):
         x = np.asarray(state, dtype=np.float32)
         return np.tanh(self.w2 @ np.tanh(self.w1 @ x + self.b1) + self.b2)

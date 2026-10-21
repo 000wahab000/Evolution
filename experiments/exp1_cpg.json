@@ -1,0 +1,81 @@
+{
+  "name": "exp1_cpg",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "optimizer": "ga",
+  "optimizer_params": {
+    "pop_size": 50
+  },
+  "episodes_budget": 25000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 1250,
+  "variants": {
+    "cpg": {},
+    "zeros": {
+      "brain_input": "zeros"
+    },
+    "noise": {
+      "brain_input": "noise"
+    },
+    "shuffled": {
+      "brain_input": "shuffled"
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "a": "cpg",
+      "b": "zeros",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "CPG-on reaches a higher held-out test distance IQM than CPG-zeros at an equal episode budget."
+    },
+    {
+      "id": "H2",
+      "a": "cpg",
+      "b": "zeros",
+      "metric": "shift_drop",
+      "direction": "less",
+      "text": "The CPG advantage persists or grows under terrain shift: cpg's shift drop (control M1 - test M1) is lower than zeros'."
+    },
+    {
+      "id": "H3",
+      "a": "cpg",
+      "b": "noise",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "CPG-on outperforms the noise control, so the benefit is not explained by uninformative extra input."
+    }
+  ],
+  "hypotheses_tag": ""
+}

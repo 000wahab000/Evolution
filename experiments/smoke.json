@@ -1,0 +1,52 @@
+{
+  "name": "smoke",
+  "seeds": [
+    0,
+    1
+  ],
+  "optimizer": "ga",
+  "optimizer_params": {
+    "pop_size": 10
+  },
+  "episodes_budget": 2000,
+  "rollouts_k": 2,
+  "eval_every_episodes": 500,
+  "test_terrain_seeds": [
+    1000,
+    1001,
+    1002
+  ],
+  "control_terrain_seeds": [
+    2000,
+    2001
+  ],
+  "validation_terrain_seeds": [
+    3000,
+    3001
+  ],
+  "variants": {
+    "cpg": {},
+    "zeros": {
+      "brain_input": "zeros"
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "a": "cpg",
+      "b": "zeros",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "CPG-on reaches a higher held-out test distance IQM than CPG-zeros at an equal episode budget."
+    },
+    {
+      "id": "H2",
+      "a": "cpg",
+      "b": "zeros",
+      "metric": "shift_drop",
+      "direction": "less",
+      "text": "The CPG advantage persists or grows under terrain shift: cpg's shift drop (control M1 - test M1) is lower than zeros'."
+    }
+  ],
+  "hypotheses_tag": ""
+}
