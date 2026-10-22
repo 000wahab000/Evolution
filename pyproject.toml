@@ -25,6 +25,9 @@ research = [
     "cma>=3.3",
     "matplotlib>=3.7.0",
 ]
+gym = [
+    "gymnasium>=0.29",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.3.0",
