@@ -49,7 +49,7 @@ class CreatureEnv:
         self.cpg_perm = list(cpg_perm) if cpg_mode == "shuffled" else None
         self.substeps = int(substeps)
         self.space = pymunk.Space()
-        self.space.gravity = (0, 900) 
+        self.space.gravity = (0, 900)
         self.create_ground()
         self.create_creature()
         self.steps = 0
@@ -63,7 +63,7 @@ class CreatureEnv:
         height = 20
         moment = pymunk.moment_for_box(mass, (width, height))
         self.torso = pymunk.Body(mass, moment)
-        self.torso.position = (400,450) 
+        self.torso.position = (400,450)
         self.torso_shape = pymunk.Poly.create_box(self.torso, (width, height))
         self.torso_shape.friction = 0.5
         self.torso_shape.filter = pymunk.ShapeFilter(group=1)
@@ -77,9 +77,9 @@ class CreatureEnv:
         leg_length = 40
         leg_moment = pymunk.moment_for_box(leg_mass, (leg_width, leg_length))
         self.anchors = [
-            (-22, height / 2),  
-            (-18, height / 2),  
-            (18, height / 2),  
+            (-22, height / 2),
+            (-18, height / 2),
+            (18, height / 2),
             (22, height / 2)]
         self.leg_length = leg_length
         for anchor in self.anchors:
@@ -89,13 +89,13 @@ class CreatureEnv:
                 self.torso.position.y + anchor[1] + leg_length / 2,
             )
             leg_shape = pymunk.Poly.create_box(leg, (leg_width, leg_length))
-            leg_shape.friction = 1.2  
-            leg_shape.filter = pymunk.ShapeFilter(group=1)  
+            leg_shape.friction = 1.2
+            leg_shape.filter = pymunk.ShapeFilter(group=1)
             self.space.add(leg, leg_shape)
             self.legs.append(leg)
             self.leg_shapes.append(leg_shape)
             pivot = pymunk.PivotJoint(self.torso, leg, anchor, (0, -leg_length / 2))
-            limit = pymunk.RotaryLimitJoint(self.torso, leg, -np.pi / 3, np.pi / 3)         
+            limit = pymunk.RotaryLimitJoint(self.torso, leg, -np.pi / 3, np.pi / 3)
             motor = pymunk.SimpleMotor(self.torso, leg, 0)
             motor.max_force = 150000
             self.space.add(pivot, limit, motor)

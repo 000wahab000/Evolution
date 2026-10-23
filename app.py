@@ -4,9 +4,9 @@ import multiprocessing
 import os
 import threading
 import time
-from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 import numpy as np
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 from src.environment import CreatureEnv
 from src.evolution import Population

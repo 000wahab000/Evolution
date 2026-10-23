@@ -1,7 +1,7 @@
 import argparse
 import csv
-import json
 import logging
+import multiprocessing
 import os
 import random
 import time
@@ -15,15 +15,11 @@ from src.utils import (
     LOGS_DIR,
     MODELS_DIR,
     UNIVERSAL_BEST_PATH,
-    UNIVERSAL_META_PATH,
     atomic_save,
     load_state_dict_file,
     load_universal_best_meta,
     save_universal_best,
 )
-
-import multiprocessing
-
 
 
 def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15, workers=None):

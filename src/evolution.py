@@ -4,8 +4,10 @@ import numpy as np
 
 # pyrefly: ignore [missing-import]
 from src.environment import CreatureEnv, run_episode
+
 # pyrefly: ignore [missing-import]
 from src.model import CreatureBrain
+
 
 def evaluate_genome(args):
     """
