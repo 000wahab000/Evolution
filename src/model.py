@@ -3,10 +3,12 @@ import torch.nn as nn
 
 
 class CreatureBrain(nn.Module):
-    def __init__(self, input_size=15, output_size=4):
+    def __init__(self, input_size=18, output_size=5):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_size, 16),
+            nn.Linear(input_size, 32),
+            nn.Tanh(),
+            nn.Linear(32, 16),
             nn.Tanh(),
             nn.Linear(16, output_size),
             nn.Tanh(),

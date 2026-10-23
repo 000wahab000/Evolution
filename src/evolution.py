@@ -5,8 +5,10 @@ import torch
 
 # pyrefly: ignore [missing-import]
 from src.environment import CreatureEnv
+
 # pyrefly: ignore [missing-import]
 from src.model import CreatureBrain
+
 
 def evaluate_genome(args):
     """
@@ -78,6 +80,11 @@ class Population:
                 p_child.data.copy_(torch.where(mask, p_child.data, p2.data))
         return child
 
+    def tournament_select(self, k=3):
+        candidates = random.sample(range(len(self.models)), k)
+        best_idx = max(candidates, key=lambda i: self.fitnesses[i])
+        return self.models[best_idx]
+
     def evolve(self):
         sorted_indices = np.argsort(self.fitnesses)[::-1]
         elite_count = min(5, self.pop_size)
@@ -86,14 +93,12 @@ class Population:
         new_models = [self.clone_model(m) for m in elites]
 
         while len(new_models) < self.pop_size:
-            if random.random() < 0.15:
-                parent = random.choice(elites)
+            if random.random() < 0.10:
+                parent = self.tournament_select(k=3)
                 new_models.append(self.mutate(parent))
             else:
-                if len(elites) >= 2:
-                    parent1, parent2 = random.sample(elites, 2)
-                else:
-                    parent1 = parent2 = elites[0]
+                parent1 = self.tournament_select(k=3)
+                parent2 = self.tournament_select(k=3)
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child, in_place=True)
                 new_models.append(child)

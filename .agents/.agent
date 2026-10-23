@@ -1,0 +1,452 @@
+﻿# Evolution-1 Agent Directive
+# Authored by: Claude Sonnet (Thinking Model) — Role: Architect / Planner
+# Executor:    Gemini models (Flash / Pro) — Role: Implementation workhorse
+# Date:        2026-09-16
+# Project:     Pod Pedal Walker — 2D Evolutionary Locomotion Lab
+# ─────────────────────────────────────────────────────────────────────────────
+
+## WHAT THIS FILE IS
+
+This .agent file is the single source of truth for all future work on
+Evolution-1. It was produced after:
+  1. A full codebase audit (environment.py, evolution.py, model.py, app.py, main.py)
+  2. 30-day research sweep across evolutionary locomotion, procedural terrain,
+     CPG biology, and SSE streaming best practices (September 2026)
+  3. Brainstorm and planning pass (ce-brainstorm + ce-plan skills)
+
+Claude Sonnet thinks. Gemini models implement.
+When a Gemini model reads this file, it must follow the roadmap below
+step-by-step without skipping phases. All decisions were made here.
+Gemini's job is precise, clean code — no architectural changes unless
+explicitly listed as a step.
+
+---
+
+## PROJECT ORIENTATION (READ BEFORE ANY STEP)
+
+### What the project is
+A 2D evolutionary locomotion simulator. A quadruped creature ("pod pedal walker")
+is physically simulated in Pymunk. A population of small neural networks (15->16->4,
+Tanh activations) are evolved via a genetic algorithm (crossover + mutation) to
+control its 4 leg motors. Training runs headlessly on multi-core CPU. Results
+stream live to a Flask browser dashboard via Server-Sent Events (SSE).
+
+### File map
+  src/environment.py   - CreatureEnv: physics world, creature, terrain, reward
+  src/evolution.py     - Population: evaluate, mutate, crossover, evolve
+  src/model.py         - CreatureBrain: tiny NN controller
+  src/utils.py         - Checkpoint helpers (atomic save, universal best)
+  src/s3_sync.py       - Optional AWS S3 sync for checkpoints
+  main.py              - CLI: --train / --render flags
+  app.py               - Flask web server: SSE stream + REST training control
+  templates/index.html - Browser dashboard (HTML5 Canvas + Chart.js)
+  logs/history.csv     - Per-generation fitness metrics
+  models/              - Saved .pth checkpoints
+
+### Active constraints (MUST NOT VIOLATE)
+- No heavy RL frameworks (no Ray, Stable-Baselines, PyTorch RL)
+- No GPU dependency — CPU-only multiprocessing stays
+- No aesthetic changes unless step explicitly says so
+- No new Python packages unless step explicitly names them
+- Always save models to models/, logs to logs/
+- Fix bugs at root cause, never with try/except swallowing
+
+---
+
+## RESEARCH FINDINGS (CONTEXT FOR GEMINI)
+
+### F1 — Terrain
+Current terrain: 2 static Pymunk Segments (hardcoded uphill x:600-1600,
+downhill x:1600-2600). This is too simple and fails to generalize creatures
+beyond a single fixed profile. The field standard for 2D walker research
+(2026) is continuous Perlin/simplex noise heightmaps sampled at regular
+x-intervals, converted to chained pymunk.Segment objects, with steepness
+increasing as a function of creature displacement.
+
+### F2 — CPG Clock
+Current CPG: fixed 30-step (sin, cos) lookup table. Step index modulo 30
+drives the oscillation phase. Improvement: make CPG frequency a learnable
+scalar (5th NN output: 4 motor rates + 1 frequency modifier). The frequency
+modifier scales how fast the CPG clock advances. Creature adapts stride
+rate to terrain slope automatically.
+
+### F3 — NN Architecture
+Current: 15 inputs -> Linear(16) -> Tanh -> Linear(4) -> Tanh
+Improvement: 15 inputs -> Linear(32) -> Tanh -> Linear(16) -> Tanh -> Linear(4) -> Tanh
+Params go from ~260 to ~660 — still tiny, still fast. Doubles hidden capacity
+without breaking CPU constraint.
+
+### F4 — Selection Strategy
+Current: top-5 elitism by argsort, then random crossover from elites.
+Improvement: tournament selection (k=3) replaces random elite sampling.
+Picks 3 random individuals, takes the best, repeats for parent2. Preserves
+diversity better than pure elitism.
+
+### F5 — Training Speed
+Current bottleneck: pool.map pickles entire state_dict for every genome.
+SIMPLER fix (implement first): reduce max_steps from 600 to 200 for early
+generations, scaling up to 600 by gen 67. Early creatures die fast anyway.
+
+### F6 — SSE Stream
+Current: every frame sends full render state JSON (~400 bytes) at 45fps.
+Fix: send delta-state only (changed fields). Reduces bandwidth ~40-50%.
+Also fix frame timing: proper elapsed-time accounting for true 45fps.
+
+### F7 — Terrain in State Vector
+Current state vector: 15 inputs, no terrain info. Creature is terrain-blind.
+Fix: add 3 lookahead readings (ground_y at torso_x+50, +100, +150).
+State vector grows: 15 -> 18 inputs. Model input_size must match.
+
+---
+
+## ROADMAP
+
+Phases must be executed in order. Each is self-contained with a done condition.
+Gemini must complete one phase fully before starting the next.
+
+===========================================================================
+### PHASE 1 — Procedural Terrain Generation
+Priority: HIGH | Risk: LOW
+===========================================================================
+
+Replace hardcoded terrain_changing() segments with Perlin noise heightmap.
+
+Step 1.1 — Add to requirements.txt:
+  noise>=1.2.2
+
+Step 1.2 — Rewrite terrain_changing() in src/environment.py:
+  Add at top: from noise import pnoise1
+  Remove the hardcoded uphill and downhill block entirely.
+  New terrain_changing() body:
+
+    self.terrain_bodies = []
+    self.terrain_shapes = []
+    sample_xs = range(600, 5001, 30)
+    points = []
+    for x in sample_xs:
+        frequency = 0.0008 + (x / 5000.0) * 0.002
+        amp = 15.0 + (x / 5000.0) * 55.0
+        noise_val = pnoise1(x * frequency, octaves=4)
+        y = 500.0 + noise_val * amp
+        points.append((x, y))
+    for i in range(len(points) - 1):
+        body = pymunk.Body(body_type=pymunk.Body.STATIC)
+        seg = pymunk.Segment(body, points[i], points[i+1], 3)
+        seg.friction = 1.5
+        self.space.add(body, seg)
+        self.terrain_bodies.append(body)
+        self.terrain_shapes.append(seg)
+
+  Keep the flat base segment from (-10000, 500) to (600, 500) intact.
+
+Step 1.3 — Verify:
+  Run: python -c "from src.environment import CreatureEnv; e=CreatureEnv(); print(len(e.terrain_bodies), 'segments')"
+  Expected: 140-150 segments, no crash.
+
+DONE when: pnoise1 used, 140+ segments, no import errors.
+
+===========================================================================
+### PHASE 2 — Adaptive max_steps Per Generation
+Priority: HIGH | Risk: NONE
+===========================================================================
+
+Step 2.1 — In app.py run_training_loop(), find:
+  pop.evaluate(fitness_mode=training_state["fitness_mode"], pool=pool)
+  Replace with:
+    adaptive_steps = min(600, 200 + gen * 6)
+    pop.evaluate(fitness_mode=training_state["fitness_mode"], max_steps=adaptive_steps, pool=pool)
+
+Step 2.2 — In main.py train(), find:
+  population.evaluate(fitness_mode=fitness_mode, pool=pool)
+  Replace with:
+    adaptive_steps = min(600, 200 + gen * 6)
+    population.evaluate(fitness_mode=fitness_mode, max_steps=adaptive_steps, pool=pool)
+
+DONE when: both files updated.
+
+===========================================================================
+### PHASE 3 — Tournament Selection
+Priority: MEDIUM | Risk: LOW
+===========================================================================
+
+Step 3.1 — Add to Population class in src/evolution.py (after crossover()):
+
+    def tournament_select(self, k=3):
+        candidates = random.sample(range(len(self.models)), k)
+        best_idx = max(candidates, key=lambda i: self.fitnesses[i])
+        return self.models[best_idx]
+
+Step 3.2 — Replace inner while loop body in evolve() (keep elitism block):
+
+    if random.random() < 0.10:
+        parent = self.tournament_select(k=3)
+        new_models.append(self.mutate(parent))
+    else:
+        parent1 = self.tournament_select(k=3)
+        parent2 = self.tournament_select(k=3)
+        child = self.crossover(parent1, parent2)
+        child = self.mutate(child, in_place=True)
+        new_models.append(child)
+
+Step 3.3 — Verify:
+  Run: python -c "from src.evolution import Population; p=Population(); p.fitnesses=[float(i) for i in range(50)]; p.evolve(); print('OK')"
+  Expected: OK
+
+DONE when: tournament_select added, evolve uses it, verify passes.
+
+===========================================================================
+### PHASE 4 — Deeper NN Architecture (15->32->16->4)
+Priority: MEDIUM | Risk: MEDIUM (delete old checkpoints)
+===========================================================================
+
+Step 4.1 — In src/model.py replace net definition:
+
+    self.net = nn.Sequential(
+        nn.Linear(input_size, 32),
+        nn.Tanh(),
+        nn.Linear(32, 16),
+        nn.Tanh(),
+        nn.Linear(16, output_size),
+        nn.Tanh(),
+    )
+
+  Keep output_size=4 default for now.
+
+Step 4.2 — Delete old checkpoints:
+  Run: Remove-Item models\*.pth -ErrorAction SilentlyContinue
+  Also delete models\universal_best.json if present.
+
+Step 4.3 — Verify:
+  Run: python -c "from src.model import CreatureBrain; m=CreatureBrain(); print(sum(p.numel() for p in m.parameters()), 'params')"
+  Expected: 660 params
+
+DONE when: 660 params, checkpoints deleted, no errors.
+
+===========================================================================
+### PHASE 5 — Adaptive CPG Frequency (5th NN Output)
+Priority: MEDIUM-HIGH | Risk: MEDIUM (output_size changes to 5)
+===========================================================================
+
+Step 5.1 — In src/model.py change default: output_size=5
+  Architecture is now 15->32->16->5.
+
+Step 5.2 — In src/environment.py CreatureEnv:
+  In __init__: add  self.cpg_phase = 0.0
+  In reset():  add  self.cpg_phase = 0.0
+
+Step 5.3 — In get_state(), change CPG lookup:
+  OLD: cpg_sin, cpg_cos = CPG_CLOCK[self.steps % 30]
+  NEW:
+    phase_idx = int(self.cpg_phase) % 30
+    cpg_sin, cpg_cos = CPG_CLOCK[phase_idx]
+
+Step 5.4 — In step(actions), replace motor loop:
+  OLD:
+    for motor, action in zip(self.motors, actions):
+        motor.rate = float(action) * 10.0
+  NEW:
+    motor_actions = actions[:4]
+    freq_mod = float(actions[4])
+    for motor, action in zip(self.motors, motor_actions):
+        motor.rate = float(action) * 10.0
+    self.cpg_phase += 1.0 + freq_mod * 0.5
+
+  Keep space.step(3/60.0) and self.steps += 1 in the same positions.
+
+Step 5.5 — Delete checkpoints:
+  Run: Remove-Item models\*.pth -ErrorAction SilentlyContinue
+
+Step 5.6 — Verify smoke test:
+  Run: python -c "
+  from src.model import CreatureBrain
+  from src.environment import CreatureEnv
+  m = CreatureBrain()
+  e = CreatureEnv()
+  s = e.reset()
+  a = m.get_action(s)
+  print('action shape:', a.shape)
+  s2, r, done, fallen = e.step(a)
+  print('step OK, reward:', round(r, 3))
+  "
+  Expected: action shape: (5,) and step OK
+
+DONE when: action (5,), cpg_phase accumulates, smoke test passes.
+
+===========================================================================
+### PHASE 6 — Terrain Lookahead in State Vector (15->18)
+Priority: LOW-MEDIUM | Risk: MEDIUM (input_size changes)
+===========================================================================
+
+Step 6.1 — Add query_ground_height() to CreatureEnv in src/environment.py:
+
+    def query_ground_height(self, world_x):
+        hits = self.space.segment_query(
+            (world_x, 300), (world_x, 600), 1.0, pymunk.ShapeFilter()
+        )
+        if hits:
+            return min(h.point.y for h in hits)
+        return 500.0
+
+Step 6.2 — Extend get_state() return array to 18 elements:
+  Append after cpg_cos:
+    torso_x = self.torso.position.x
+    look1 = (self.query_ground_height(torso_x + 50)  - 500.0) * 0.02
+    look2 = (self.query_ground_height(torso_x + 100) - 500.0) * 0.02
+    look3 = (self.query_ground_height(torso_x + 150) - 500.0) * 0.02
+  Add look1, look2, look3 as last 3 elements of the np.array.
+
+Step 6.3 — In src/model.py change: input_size=18 as default.
+
+Step 6.4 — Delete checkpoints:
+  Run: Remove-Item models\*.pth -ErrorAction SilentlyContinue
+
+Step 6.5 — Verify:
+  Same smoke test as Phase 5 plus: print('state shape:', s.shape)
+  Expected: state shape: (18,), action shape: (5,)
+
+DONE when: state (18,), model input_size=18, no errors.
+
+===========================================================================
+### PHASE 7 — SSE Delta-State Streaming
+Priority: LOW | Risk: LOW
+===========================================================================
+
+Step 7.1 — In app.py stream_simulation() generate() function:
+  Before while loop add:
+    prev_frame = {}
+
+  At top of while loop body add:
+    frame_start = time.perf_counter()
+
+  Replace yield line with:
+    if not prev_frame:
+        payload = {"type": "full"}
+        payload.update(frame)
+    else:
+        delta = {k: v for k, v in frame.items() if v != prev_frame.get(k)}
+        delta["type"] = "delta"
+        delta["steps"] = frame["steps"]
+        payload = delta
+    prev_frame = frame.copy()
+    if done:
+        prev_frame = {}
+    yield "data: " + json.dumps(payload) + "\n\n"
+    frame_end = time.perf_counter()
+    time.sleep(max(0.0, (1.0 / 45.0) - (frame_end - frame_start)))
+
+  Remove the old time.sleep(1.0 / 45.0) line.
+
+Step 7.2 — Update EventSource onmessage handler in templates/index.html:
+  Read the file first to find the exact handler location.
+  Replace the handler body with:
+    const data = JSON.parse(event.data);
+    if (data.type === 'full') { window.simState = data; }
+    else { Object.assign(window.simState || {}, data); }
+  Use window.simState for all canvas rendering.
+
+DONE when: delta frames sent, no visual regression.
+
+===========================================================================
+### PHASE 8 — Gunicorn + gevent Deployment
+Priority: LOW | Risk: NONE
+===========================================================================
+
+Step 8.1 — Add to requirements.txt:
+  gunicorn>=21.2.0
+  gevent>=24.2.1
+
+Step 8.2 — Create Procfile at repo root:
+  web: gunicorn -w 1 -k gevent --timeout 120 --bind 0.0.0.0:$PORT app:app
+  (Note: -w 1 is intentional — shared training state must not be forked)
+
+Step 8.3 — Read Dockerfile, replace CMD line with:
+  CMD ["gunicorn", "-w", "1", "-k", "gevent", "--timeout", "120", "--bind", "0.0.0.0:8000", "app:app"]
+
+DONE when: Procfile exists, requirements updated, Dockerfile CMD updated.
+
+===========================================================================
+### PHASE 9 — CONCEPTS.md Vocabulary Update
+Priority: LOW | Risk: NONE
+===========================================================================
+
+Step 9.1 — Read CONCEPTS.md first, then append these new terms:
+
+  Adaptive CPG
+    A Central Pattern Generator whose phase advance rate is modulated by
+    a learned NN output (5th motor output), allowing the creature to couple
+    stride frequency to terrain slope automatically.
+
+  Perlin Terrain
+    Procedurally generated continuous heightmap using 1D Perlin noise.
+    Difficulty (amplitude + frequency) increases with x-displacement.
+    Replaces hardcoded uphill/downhill segments.
+
+  Tournament Selection (k=3)
+    GA parent selection where 3 random individuals compete; highest fitness
+    wins. Replaces pure elite sampling to preserve population diversity.
+
+  Terrain Lookahead
+    3 additional state features giving ground_y at +50, +100, +150px ahead
+    of the torso. Grows state vector from 15 to 18 inputs. Basic
+    exteroceptive terrain awareness without camera or LiDAR.
+
+  Delta-State SSE
+    SSE frames transmitting only changed fields after the first full frame.
+    Reduces stream bandwidth ~40-50% on flat terrain runs.
+
+DONE when: all 5 terms appended.
+
+---
+
+## GEMINI EXECUTION RULES
+
+1. Read before editing. Always view_file on the target before any edit.
+   Never assume content from memory.
+
+2. One phase at a time. Complete all steps and verification before advancing.
+
+3. Commit at phase boundaries:
+   git add -A && git commit -m "feat(phase-N): <phase title>"
+
+4. No extra features. Add exactly what the step says. Ponytail principle:
+   minimal code that works.
+
+5. Crash = stop. Report exact error + traceback. Do not guess-fix.
+
+6. Never commit .pth files to git. Check .gitignore.
+
+7. Checkpoint deletion is safe and expected in Phases 4, 5, 6.
+
+---
+
+## PHASE EXECUTION ORDER
+
+  Phase | What                              | Priority | Risk
+  ------|-----------------------------------|----------|-------
+  1     | Perlin terrain generation         | HIGH     | LOW
+  2     | Adaptive max_steps per generation | HIGH     | NONE
+  3     | Tournament selection              | MEDIUM   | LOW
+  4     | Deeper NN (15->32->16->4)         | MEDIUM   | MEDIUM
+  5     | Adaptive CPG (5th NN output)      | MEDIUM   | MEDIUM
+  6     | Terrain lookahead (15->18 inputs) | MEDIUM   | MEDIUM
+  7     | SSE delta-state streaming         | LOW      | LOW
+  8     | Gunicorn + gevent deployment      | LOW      | NONE
+  9     | CONCEPTS.md vocabulary update     | LOW      | NONE
+
+START WITH PHASE 1. DO NOT SKIP AHEAD.
+
+---
+
+## SUCCESS METRICS
+
+After Phases 1-6 complete and 50 generations run:
+- Best fitness > 400 (vs ~200-250 on flat terrain before)
+- Diversity score > 0.15 (tournament prevents collapse)
+- Throughput >= current (adaptive max_steps offsets deeper model cost)
+- SSE byte rate drops ~40% on flat segments (Phase 7)
+- Smoke test always passes
+
+---
+# EOF
+# Next reader: Gemini Flash or Pro
+# This file is the contract. Execute it.

@@ -1568,3 +1568,386 @@
 2026-09-03 00:24:38,737 [INFO] Gen 149 | Best: 1137.68 | Avg:  274.50 | Worst: -340.23 | Div: 0.2036
 2026-09-03 00:24:39,786 [INFO] Training complete. Session best: models/best_model.pth | Universal best: models/universal_best.pth (1155.30)
 2026-09-03 00:25:26,796 [INFO] Rendering top 5 models...
+2026-09-04 03:46:51,655 [INFO] Rendering top 5 models...
+2026-09-04 04:09:22,960 [INFO] Rendering top 5 models...
+2026-09-04 04:09:50,441 [INFO] Rendering top 5 models...
+2026-09-04 04:10:12,037 [INFO] Rendering top 5 models...
+2026-09-04 04:12:39,958 [INFO] Rendering top 5 models...
+2026-09-04 04:12:51,268 [INFO] Rendering top 5 models...
+2026-09-04 04:15:30,225 [INFO] Rendering top 5 models...
+2026-09-04 04:15:50,811 [INFO] Rendering top 5 models...
+2026-09-04 04:34:34,667 [INFO] Rendering top 5 models...
+2026-09-04 04:34:50,442 [INFO] Rendering top 5 models...
+2026-09-04 04:36:04,961 [INFO] Rendering top 5 models...
+2026-09-04 05:06:32,063 [INFO] Rendering top 5 models...
+2026-09-04 05:12:01,929 [INFO] Starting training for 150 generations with population size 100, mutation_rate 0.15, workers 8... (Universal All-Time Record: 1155.30)
+2026-09-04 05:12:09,641 [INFO] Gen   0 | Best:   75.18 | Avg:  -75.53 | Worst: -318.79 | Div: 0.2507
+2026-09-04 05:12:11,539 [INFO] Gen   1 | Best:  196.50 | Avg:  -30.60 | Worst: -250.97 | Div: 0.2517
+2026-09-04 05:12:13,185 [INFO] Gen   2 | Best:  196.50 | Avg:  -37.11 | Worst: -263.47 | Div: 0.2659
+2026-09-04 05:12:14,927 [INFO] Gen   3 | Best:  196.50 | Avg:  -33.71 | Worst: -330.19 | Div: 0.2643
+2026-09-04 05:12:16,627 [INFO] Gen   4 | Best:  196.50 | Avg:  -21.28 | Worst: -201.19 | Div: 0.2627
+2026-09-04 05:12:18,013 [INFO] Gen   5 | Best:  196.50 | Avg:  -35.31 | Worst: -241.00 | Div: 0.2514
+2026-09-04 05:12:19,295 [INFO] Gen   6 | Best:  196.50 | Avg:  -19.70 | Worst: -347.31 | Div: 0.2240
+2026-09-04 05:12:20,776 [INFO] Gen   7 | Best:  245.08 | Avg:  -10.41 | Worst: -212.51 | Div: 0.2342
+2026-09-04 05:12:22,521 [INFO] Gen   8 | Best:  245.08 | Avg:    1.81 | Worst: -227.24 | Div: 0.2386
+2026-09-04 05:12:23,873 [INFO] Gen   9 | Best:  245.08 | Avg:  -10.85 | Worst: -231.71 | Div: 0.2359
+2026-09-04 05:12:25,431 [INFO] Gen  10 | Best:  315.99 | Avg:    8.01 | Worst: -202.02 | Div: 0.2494
+2026-09-04 05:12:26,791 [INFO] Gen  11 | Best:  315.99 | Avg:   12.73 | Worst: -231.37 | Div: 0.2508
+2026-09-04 05:12:28,179 [INFO] Gen  12 | Best:  315.99 | Avg:    6.07 | Worst: -221.07 | Div: 0.2600
+2026-09-04 05:12:29,607 [INFO] Gen  13 | Best:  315.99 | Avg:   11.10 | Worst: -197.23 | Div: 0.2593
+2026-09-04 05:12:31,106 [INFO] Gen  14 | Best:  315.99 | Avg:    4.08 | Worst: -261.08 | Div: 0.2583
+2026-09-04 05:12:32,608 [INFO] Gen  15 | Best:  315.99 | Avg:   -7.11 | Worst: -238.84 | Div: 0.2585
+2026-09-04 05:12:34,635 [INFO] Gen  16 | Best:  382.07 | Avg:   24.99 | Worst: -275.12 | Div: 0.2380
+2026-09-04 05:12:36,462 [INFO] Gen  17 | Best:  382.94 | Avg:   40.79 | Worst: -199.02 | Div: 0.2413
+2026-09-04 05:12:38,246 [INFO] Gen  18 | Best:  378.54 | Avg:   37.63 | Worst: -229.96 | Div: 0.2389
+2026-09-04 05:12:40,232 [INFO] Gen  19 | Best:  375.24 | Avg:   41.94 | Worst: -276.90 | Div: 0.2445
+2026-09-04 05:12:41,993 [INFO] Gen  20 | Best:  654.68 | Avg:   32.89 | Worst: -225.07 | Div: 0.2383
+2026-09-04 05:12:43,585 [INFO] Gen  21 | Best:  605.06 | Avg:   46.29 | Worst: -223.58 | Div: 0.2383
+2026-09-04 05:12:45,585 [INFO] Gen  22 | Best:  581.39 | Avg:   80.29 | Worst: -257.46 | Div: 0.2018
+2026-09-04 05:12:47,734 [INFO] Gen  23 | Best:  645.02 | Avg:   74.31 | Worst: -224.54 | Div: 0.1780
+2026-09-04 05:12:49,847 [INFO] Gen  24 | Best:  764.18 | Avg:   98.48 | Worst: -206.26 | Div: 0.1979
+2026-09-04 05:12:52,071 [INFO] Gen  25 | Best:  962.67 | Avg:  139.93 | Worst: -222.42 | Div: 0.2006
+2026-09-04 05:12:54,028 [INFO] Gen  26 | Best:  570.58 | Avg:   91.35 | Worst: -219.63 | Div: 0.2172
+2026-09-04 05:12:55,699 [INFO] Gen  27 | Best:  701.82 | Avg:  119.38 | Worst: -219.90 | Div: 0.2175
+2026-09-04 05:12:57,239 [INFO] Gen  28 | Best:  705.76 | Avg:   35.87 | Worst: -225.71 | Div: 0.2177
+2026-09-04 05:12:59,017 [INFO] Gen  29 | Best:  891.05 | Avg:  109.96 | Worst: -235.22 | Div: 0.2046
+2026-09-04 05:13:01,013 [INFO] Gen  30 | Best:  955.21 | Avg:  135.26 | Worst: -210.24 | Div: 0.2121
+2026-09-04 05:13:03,259 [INFO] Gen  31 | Best:  824.57 | Avg:  136.06 | Worst: -219.38 | Div: 0.2178
+2026-09-04 05:13:05,193 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 1262.40 (Saved to models/universal_best.pth)
+2026-09-04 05:13:05,236 [INFO] Gen  32 | Best: 1262.40 | Avg:  151.44 | Worst: -190.76 | Div: 0.2179
+2026-09-04 05:13:07,109 [INFO] Gen  33 | Best:  960.65 | Avg:  156.01 | Worst: -243.06 | Div: 0.2198
+2026-09-04 05:13:09,000 [INFO] Gen  34 | Best:  974.16 | Avg:  204.79 | Worst: -216.26 | Div: 0.2151
+2026-09-04 05:13:10,976 [INFO] Gen  35 | Best:  945.41 | Avg:  206.50 | Worst: -240.51 | Div: 0.2203
+2026-09-04 05:13:13,220 [INFO] Gen  36 | Best: 1213.52 | Avg:  293.39 | Worst: -192.50 | Div: 0.2111
+2026-09-04 05:13:15,647 [INFO] Gen  37 | Best: 1015.37 | Avg:  299.58 | Worst: -495.52 | Div: 0.2275
+2026-09-04 05:13:17,664 [INFO] Gen  38 | Best: 1009.80 | Avg:  235.79 | Worst: -325.59 | Div: 0.2233
+2026-09-04 05:13:19,993 [INFO] Gen  39 | Best: 1016.57 | Avg:  206.53 | Worst: -276.85 | Div: 0.2095
+2026-09-04 05:13:22,569 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 1305.00 (Saved to models/universal_best.pth)
+2026-09-04 05:13:22,587 [INFO] Gen  40 | Best: 1305.00 | Avg:  364.36 | Worst: -230.29 | Div: 0.2099
+2026-09-04 05:13:24,939 [INFO] Gen  41 | Best: 1071.18 | Avg:  221.40 | Worst: -271.12 | Div: 0.2152
+2026-09-04 05:13:27,597 [INFO] Gen  42 | Best: 1163.98 | Avg:  337.78 | Worst: -281.79 | Div: 0.2143
+2026-09-04 05:13:30,216 [INFO] Gen  43 | Best: 1117.16 | Avg:  259.57 | Worst: -299.27 | Div: 0.2160
+2026-09-04 05:13:32,652 [INFO] Gen  44 | Best: 1155.93 | Avg:  289.19 | Worst: -376.78 | Div: 0.2138
+2026-09-04 05:13:34,898 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 1456.76 (Saved to models/universal_best.pth)
+2026-09-04 05:13:34,913 [INFO] Gen  45 | Best: 1456.76 | Avg:  301.42 | Worst: -265.89 | Div: 0.2147
+2026-09-04 05:13:37,546 [INFO] Gen  46 | Best: 1380.85 | Avg:  367.48 | Worst: -206.44 | Div: 0.1902
+2026-09-04 05:13:40,013 [INFO] Gen  47 | Best: 1312.57 | Avg:  350.22 | Worst: -218.84 | Div: 0.1610
+2026-09-04 05:13:42,479 [INFO] Gen  48 | Best: 1232.50 | Avg:  359.23 | Worst: -372.24 | Div: 0.1774
+2026-09-04 05:13:44,620 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 1526.70 (Saved to models/universal_best.pth)
+2026-09-04 05:13:44,637 [INFO] Gen  49 | Best: 1526.70 | Avg:  299.63 | Worst: -346.60 | Div: 0.2007
+2026-09-04 05:13:47,227 [INFO] Gen  50 | Best: 1443.93 | Avg:  359.04 | Worst: -271.54 | Div: 0.2168
+2026-09-04 05:13:49,496 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 1614.12 (Saved to models/universal_best.pth)
+2026-09-04 05:13:49,538 [INFO] Gen  51 | Best: 1614.12 | Avg:  378.82 | Worst: -262.65 | Div: 0.2168
+2026-09-04 05:13:51,753 [INFO] Gen  52 | Best: 1500.61 | Avg:  412.90 | Worst: -291.81 | Div: 0.2227
+2026-09-04 05:13:54,307 [INFO] Gen  53 | Best: 1376.01 | Avg:  491.83 | Worst: -263.50 | Div: 0.2402
+2026-09-04 05:13:56,744 [INFO] Gen  54 | Best: 1358.27 | Avg:  564.70 | Worst: -241.31 | Div: 0.2349
+2026-09-04 05:13:59,389 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2276.37 (Saved to models/universal_best.pth)
+2026-09-04 05:13:59,406 [INFO] Gen  55 | Best: 2276.37 | Avg:  600.88 | Worst: -247.17 | Div: 0.2437
+2026-09-04 05:14:01,737 [INFO] Gen  56 | Best: 1892.19 | Avg:  588.59 | Worst: -253.67 | Div: 0.2633
+2026-09-04 05:14:03,905 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2303.27 (Saved to models/universal_best.pth)
+2026-09-04 05:14:03,921 [INFO] Gen  57 | Best: 2303.27 | Avg:  579.06 | Worst: -225.96 | Div: 0.2618
+2026-09-04 05:14:05,891 [INFO] Gen  58 | Best: 1969.97 | Avg:  533.57 | Worst: -278.40 | Div: 0.2606
+2026-09-04 05:14:08,002 [INFO] Gen  59 | Best: 1905.69 | Avg:  727.93 | Worst: -353.85 | Div: 0.2158
+2026-09-04 05:14:10,632 [INFO] Gen  60 | Best: 2088.37 | Avg:  758.75 | Worst: -276.10 | Div: 0.1807
+2026-09-04 05:14:12,736 [INFO] Gen  61 | Best: 1824.22 | Avg:  664.60 | Worst: -200.47 | Div: 0.1953
+2026-09-04 05:14:15,057 [INFO] Gen  62 | Best: 2106.79 | Avg:  582.14 | Worst: -258.54 | Div: 0.2037
+2026-09-04 05:14:17,343 [INFO] Gen  63 | Best: 1979.45 | Avg:  658.65 | Worst: -279.83 | Div: 0.2176
+2026-09-04 05:14:19,737 [INFO] Gen  64 | Best: 2127.61 | Avg:  661.55 | Worst: -223.91 | Div: 0.2232
+2026-09-04 05:14:22,365 [INFO] Gen  65 | Best: 1875.59 | Avg:  666.68 | Worst: -219.49 | Div: 0.2216
+2026-09-04 05:14:24,930 [INFO] Gen  66 | Best: 2096.99 | Avg:  801.30 | Worst: -173.52 | Div: 0.2277
+2026-09-04 05:14:27,506 [INFO] Gen  67 | Best: 1922.52 | Avg:  623.95 | Worst: -365.87 | Div: 0.2459
+2026-09-04 05:14:29,540 [INFO] Gen  68 | Best: 1956.80 | Avg:  507.20 | Worst: -229.08 | Div: 0.2288
+2026-09-04 05:14:31,953 [INFO] Gen  69 | Best: 2274.13 | Avg:  688.50 | Worst: -234.01 | Div: 0.2462
+2026-09-04 05:14:34,816 [INFO] Gen  70 | Best: 1980.68 | Avg:  560.36 | Worst: -193.94 | Div: 0.2448
+2026-09-04 05:14:37,242 [INFO] Gen  71 | Best: 2028.31 | Avg:  445.02 | Worst: -243.96 | Div: 0.2360
+2026-09-04 05:14:39,917 [INFO] Gen  72 | Best: 2224.70 | Avg:  578.29 | Worst: -298.74 | Div: 0.2521
+2026-09-04 05:14:42,608 [INFO] Gen  73 | Best: 2234.54 | Avg:  574.27 | Worst: -219.91 | Div: 0.2579
+2026-09-04 05:14:44,794 [INFO] Gen  74 | Best: 2058.06 | Avg:  523.91 | Worst: -206.38 | Div: 0.2653
+2026-09-04 05:14:46,843 [INFO] Gen  75 | Best: 2293.79 | Avg:  592.83 | Worst: -209.04 | Div: 0.2735
+2026-09-04 05:14:48,972 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2405.18 (Saved to models/universal_best.pth)
+2026-09-04 05:14:48,990 [INFO] Gen  76 | Best: 2405.18 | Avg:  570.02 | Worst: -220.68 | Div: 0.2717
+2026-09-04 05:14:50,870 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2411.00 (Saved to models/universal_best.pth)
+2026-09-04 05:14:50,887 [INFO] Gen  77 | Best: 2411.00 | Avg:  656.16 | Worst: -190.31 | Div: 0.2437
+2026-09-04 05:14:52,998 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2576.26 (Saved to models/universal_best.pth)
+2026-09-04 05:14:53,015 [INFO] Gen  78 | Best: 2576.26 | Avg:  589.43 | Worst: -315.41 | Div: 0.2481
+2026-09-04 05:14:55,456 [INFO] Gen  79 | Best: 2158.94 | Avg:  613.97 | Worst: -205.07 | Div: 0.2560
+2026-09-04 05:14:57,682 [INFO] Gen  80 | Best: 2089.56 | Avg:  629.20 | Worst: -180.55 | Div: 0.2503
+2026-09-04 05:14:59,745 [INFO] Gen  81 | Best: 2166.56 | Avg:  591.34 | Worst: -218.80 | Div: 0.2532
+2026-09-04 05:15:01,805 [INFO] Gen  82 | Best: 2420.00 | Avg:  698.47 | Worst: -168.91 | Div: 0.2357
+2026-09-04 05:15:04,038 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2659.03 (Saved to models/universal_best.pth)
+2026-09-04 05:15:04,065 [INFO] Gen  83 | Best: 2659.03 | Avg:  858.30 | Worst: -206.50 | Div: 0.2271
+2026-09-04 05:15:06,893 [INFO] Gen  84 | Best: 2423.22 | Avg:  793.85 | Worst: -194.06 | Div: 0.2191
+2026-09-04 05:15:09,153 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2775.36 (Saved to models/universal_best.pth)
+2026-09-04 05:15:09,170 [INFO] Gen  85 | Best: 2775.36 | Avg: 1022.27 | Worst: -198.23 | Div: 0.2074
+2026-09-04 05:15:11,805 [INFO] Gen  86 | Best: 2655.78 | Avg: 1216.29 | Worst: -180.62 | Div: 0.2058
+2026-09-04 05:15:14,468 [INFO] Gen  87 | Best: 2443.29 | Avg: 1138.82 | Worst: -209.04 | Div: 0.2051
+2026-09-04 05:15:17,193 [INFO] Gen  88 | Best: 2447.66 | Avg:  901.63 | Worst: -194.85 | Div: 0.2223
+2026-09-04 05:15:19,504 [INFO] Gen  89 | Best: 2535.27 | Avg: 1029.16 | Worst: -187.29 | Div: 0.2195
+2026-09-04 05:15:21,767 [INFO] Gen  90 | Best: 2358.96 | Avg:  896.97 | Worst: -227.37 | Div: 0.2204
+2026-09-04 05:15:24,345 [INFO] Gen  91 | Best: 2437.46 | Avg:  964.77 | Worst: -323.99 | Div: 0.2352
+2026-09-04 05:15:26,599 [INFO] Gen  92 | Best: 2470.93 | Avg: 1100.71 | Worst: -201.33 | Div: 0.2215
+2026-09-04 05:15:28,971 [INFO] Gen  93 | Best: 2591.91 | Avg:  944.43 | Worst: -218.76 | Div: 0.2219
+2026-09-04 05:15:31,263 [INFO] Gen  94 | Best: 2665.09 | Avg: 1048.38 | Worst: -168.50 | Div: 0.2234
+2026-09-04 05:15:33,637 [INFO] Gen  95 | Best: 2767.40 | Avg: 1007.76 | Worst: -186.95 | Div: 0.2184
+2026-09-04 05:15:35,895 [INFO] Gen  96 | Best: 2694.83 | Avg:  935.61 | Worst: -275.07 | Div: 0.2272
+2026-09-04 05:15:37,867 [INFO] Gen  97 | Best: 2593.94 | Avg:  822.16 | Worst: -201.43 | Div: 0.2250
+2026-09-04 05:15:40,147 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2784.72 (Saved to models/universal_best.pth)
+2026-09-04 05:15:40,163 [INFO] Gen  98 | Best: 2784.72 | Avg:  770.43 | Worst: -171.14 | Div: 0.2292
+2026-09-04 05:15:42,463 [INFO] Gen  99 | Best: 2539.28 | Avg:  881.93 | Worst: -279.77 | Div: 0.2467
+2026-09-04 05:15:44,861 [INFO] Gen 100 | Best: 2548.66 | Avg:  825.58 | Worst: -285.23 | Div: 0.2453
+2026-09-04 05:15:47,644 [INFO] Gen 101 | Best: 2638.27 | Avg: 1124.29 | Worst: -178.64 | Div: 0.2459
+2026-09-04 05:15:49,674 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2822.48 (Saved to models/universal_best.pth)
+2026-09-04 05:15:49,695 [INFO] Gen 102 | Best: 2822.48 | Avg:  789.87 | Worst: -195.21 | Div: 0.2492
+2026-09-04 05:15:52,092 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 2952.01 (Saved to models/universal_best.pth)
+2026-09-04 05:15:52,111 [INFO] Gen 103 | Best: 2952.01 | Avg:  984.46 | Worst: -252.44 | Div: 0.2428
+2026-09-04 05:15:54,408 [INFO] Gen 104 | Best: 2784.63 | Avg:  954.86 | Worst: -182.65 | Div: 0.2446
+2026-09-04 05:15:56,882 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3126.27 (Saved to models/universal_best.pth)
+2026-09-04 05:15:56,903 [INFO] Gen 105 | Best: 3126.27 | Avg: 1050.00 | Worst: -185.30 | Div: 0.2304
+2026-09-04 05:15:59,233 [INFO] Gen 106 | Best: 3037.26 | Avg: 1059.05 | Worst: -275.73 | Div: 0.2250
+2026-09-04 05:16:02,017 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3139.56 (Saved to models/universal_best.pth)
+2026-09-04 05:16:02,038 [INFO] Gen 107 | Best: 3139.56 | Avg: 1157.40 | Worst: -156.06 | Div: 0.2210
+2026-09-04 05:16:04,378 [INFO] Gen 108 | Best: 2700.60 | Avg:  931.69 | Worst: -357.80 | Div: 0.2261
+2026-09-04 05:16:06,825 [INFO] Gen 109 | Best: 2882.38 | Avg:  993.23 | Worst: -183.04 | Div: 0.2240
+2026-09-04 05:16:08,861 [INFO] Gen 110 | Best: 2929.43 | Avg:  911.02 | Worst: -138.05 | Div: 0.2123
+2026-09-04 05:16:10,960 [INFO] Gen 111 | Best: 3082.07 | Avg:  970.03 | Worst: -258.70 | Div: 0.1855
+2026-09-04 05:16:13,557 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3146.26 (Saved to models/universal_best.pth)
+2026-09-04 05:16:13,575 [INFO] Gen 112 | Best: 3146.26 | Avg: 1347.63 | Worst:   13.70 | Div: 0.1805
+2026-09-04 05:16:15,950 [INFO] Gen 113 | Best: 2842.15 | Avg: 1138.92 | Worst: -181.74 | Div: 0.1970
+2026-09-04 05:16:18,695 [INFO] Gen 114 | Best: 3100.36 | Avg: 1298.71 | Worst: -202.57 | Div: 0.1953
+2026-09-04 05:16:21,451 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3157.27 (Saved to models/universal_best.pth)
+2026-09-04 05:16:21,469 [INFO] Gen 115 | Best: 3157.27 | Avg: 1507.17 | Worst: -226.42 | Div: 0.2040
+2026-09-04 05:16:23,985 [INFO] Gen 116 | Best: 3120.09 | Avg: 1359.90 | Worst: -243.37 | Div: 0.2133
+2026-09-04 05:16:26,087 [INFO] Gen 117 | Best: 3043.99 | Avg: 1237.98 | Worst: -200.06 | Div: 0.2219
+2026-09-04 05:16:28,187 [INFO] Gen 118 | Best: 3131.69 | Avg: 1159.66 | Worst: -183.15 | Div: 0.2287
+2026-09-04 05:16:30,605 [INFO] Gen 119 | Best: 3136.46 | Avg: 1230.09 | Worst: -582.67 | Div: 0.2407
+2026-09-04 05:16:32,923 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3203.90 (Saved to models/universal_best.pth)
+2026-09-04 05:16:32,942 [INFO] Gen 120 | Best: 3203.90 | Avg: 1194.26 | Worst: -125.60 | Div: 0.2466
+2026-09-04 05:16:35,727 [INFO] Gen 121 | Best: 2711.27 | Avg: 1146.05 | Worst: -161.11 | Div: 0.2459
+2026-09-04 05:16:38,245 [INFO] Gen 122 | Best: 3027.35 | Avg: 1342.57 | Worst: -140.40 | Div: 0.2514
+2026-09-04 05:16:40,967 [INFO] Gen 123 | Best: 2933.45 | Avg: 1358.07 | Worst: -179.39 | Div: 0.2600
+2026-09-04 05:16:43,535 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3224.62 (Saved to models/universal_best.pth)
+2026-09-04 05:16:43,554 [INFO] Gen 124 | Best: 3224.62 | Avg: 1413.23 | Worst: -173.95 | Div: 0.2484
+2026-09-04 05:16:46,071 [INFO] Gen 125 | Best: 2986.60 | Avg: 1314.76 | Worst: -243.65 | Div: 0.2546
+2026-09-04 05:16:48,728 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 3240.16 (Saved to models/universal_best.pth)
+2026-09-04 05:16:48,745 [INFO] Gen 126 | Best: 3240.16 | Avg: 1441.32 | Worst: -165.14 | Div: 0.2547
+2026-09-04 05:16:51,279 [INFO] Gen 127 | Best: 3169.89 | Avg: 1557.13 | Worst: -147.75 | Div: 0.2447
+2026-09-04 05:16:54,176 [INFO] Gen 128 | Best: 3182.97 | Avg: 1712.17 | Worst: -142.86 | Div: 0.2092
+2026-09-04 05:16:56,506 [INFO] Gen 129 | Best: 3099.94 | Avg: 1450.79 | Worst: -156.41 | Div: 0.2102
+2026-09-04 05:16:58,848 [INFO] Gen 130 | Best: 3188.48 | Avg: 1447.90 | Worst: -170.95 | Div: 0.2335
+2026-09-04 05:17:01,391 [INFO] Gen 131 | Best: 3124.45 | Avg: 1351.34 | Worst: -178.63 | Div: 0.2402
+2026-09-04 05:17:04,344 [INFO] Gen 132 | Best: 3199.92 | Avg: 1417.28 | Worst: -129.87 | Div: 0.2465
+2026-09-04 05:17:07,302 [INFO] Gen 133 | Best: 3132.35 | Avg: 1471.43 | Worst: -229.51 | Div: 0.2536
+2026-09-04 05:17:09,799 [INFO] Gen 134 | Best: 3153.12 | Avg: 1218.78 | Worst: -192.30 | Div: 0.2573
+2026-09-04 05:17:12,067 [INFO] Gen 135 | Best: 3186.14 | Avg:  993.29 | Worst: -332.03 | Div: 0.2587
+2026-09-04 05:17:14,411 [INFO] Gen 136 | Best: 3145.02 | Avg:  984.36 | Worst: -334.97 | Div: 0.2594
+2026-09-04 05:17:16,273 [INFO] Gen 137 | Best: 2977.48 | Avg:  852.45 | Worst: -191.04 | Div: 0.2564
+2026-09-04 05:17:18,179 [INFO] Gen 138 | Best: 3049.37 | Avg:  909.26 | Worst: -196.66 | Div: 0.2582
+2026-09-04 05:17:19,874 [INFO] Gen 139 | Best: 3138.41 | Avg:  865.24 | Worst: -197.82 | Div: 0.2339
+2026-09-04 05:17:21,793 [INFO] Gen 140 | Best: 3171.53 | Avg: 1035.77 | Worst: -281.13 | Div: 0.2303
+2026-09-04 05:17:23,940 [INFO] Gen 141 | Best: 3181.12 | Avg: 1328.87 | Worst: -206.44 | Div: 0.2300
+2026-09-04 05:17:25,862 [INFO] Gen 142 | Best: 3199.81 | Avg: 1156.92 | Worst: -192.36 | Div: 0.2407
+2026-09-04 05:17:27,813 [INFO] Gen 143 | Best: 3208.27 | Avg: 1377.92 | Worst: -158.20 | Div: 0.1885
+2026-09-04 05:17:29,648 [INFO] Gen 144 | Best: 3208.17 | Avg: 1119.34 | Worst: -125.28 | Div: 0.2099
+2026-09-04 05:17:31,477 [INFO] Gen 145 | Best: 3201.44 | Avg: 1035.98 | Worst: -169.50 | Div: 0.2303
+2026-09-04 05:17:33,549 [INFO] Gen 146 | Best: 3220.26 | Avg: 1171.71 | Worst: -227.24 | Div: 0.2407
+2026-09-04 05:17:35,717 [INFO] Gen 147 | Best: 3218.93 | Avg: 1408.64 | Worst: -155.91 | Div: 0.2086
+2026-09-04 05:17:38,114 [INFO] Gen 148 | Best: 3175.62 | Avg: 1608.76 | Worst: -155.80 | Div: 0.2004
+2026-09-04 05:17:40,477 [INFO] Gen 149 | Best: 3148.60 | Avg: 1419.31 | Worst: -316.73 | Div: 0.2098
+2026-09-04 05:17:41,606 [INFO] Training complete. Session best: models/best_model.pth | Universal best: models/universal_best.pth (3240.16)
+2026-09-04 05:38:35,340 [INFO] Rendering top 5 models...
+2026-09-04 05:39:09,455 [INFO] Rendering top 5 models...
+2026-09-04 05:40:03,901 [INFO] Rendering top 5 models...
+2026-09-04 19:37:01,002 [INFO] Rendering top 5 models...
+2026-09-04 19:45:57,657 [INFO] Rendering top 5 models...
+2026-09-12 16:09:26,761 [INFO] Rendering top 5 models...
+2026-09-12 16:09:57,068 [INFO] Rendering top 5 models...
+2026-09-12 16:50:18,824 [INFO] Rendering top 5 models...
+2026-09-12 17:05:56,027 [INFO] Rendering top 5 models...
+2026-09-12 17:06:25,638 [INFO] Rendering top 5 models...
+2026-09-12 17:06:42,463 [INFO] Rendering top 5 models...
+2026-09-12 17:06:51,062 [INFO] Rendering top 5 models...
+2026-09-12 17:11:00,248 [INFO] Rendering top 5 models...
+2026-09-12 17:11:35,020 [INFO] Rendering top 5 models...
+2026-09-12 17:12:29,155 [INFO] Rendering top 5 models...
+2026-09-12 17:13:57,721 [INFO] Rendering top 5 models...
+2026-09-12 17:16:30,112 [INFO] Rendering top 5 models...
+2026-09-12 17:17:44,528 [INFO] Rendering top 5 models...
+2026-09-12 17:21:57,929 [INFO] Rendering top 5 models...
+2026-09-12 17:22:10,120 [INFO] Rendering top 5 models...
+2026-09-12 17:23:54,285 [INFO] Rendering top 5 models...
+2026-09-12 17:24:47,226 [INFO] Rendering top 5 models...
+2026-09-12 17:26:01,553 [INFO] Rendering top 5 models...
+2026-09-12 17:32:34,670 [INFO] Rendering top 5 models...
+2026-09-12 17:33:01,374 [INFO] Rendering top 5 models...
+2026-09-12 17:34:17,487 [INFO] Rendering top 5 models...
+2026-09-12 18:18:54,639 [INFO] Rendering top 5 models...
+2026-09-12 18:20:36,202 [INFO] Rendering top 5 models...
+2026-09-12 18:21:03,469 [INFO] Rendering top 5 models...
+2026-09-12 18:23:12,115 [INFO] Rendering top 5 models...
+2026-09-12 18:26:06,724 [INFO] Rendering top 5 models...
+2026-09-12 18:27:00,011 [INFO] Rendering top 5 models...
+2026-09-12 18:28:23,483 [INFO] Starting training for 100 generations with population size 100, mutation_rate 0.15, workers 4... (Universal All-Time Record: 3240.16)
+2026-09-12 18:28:30,304 [INFO] Gen   0 | Best:  337.26 | Avg:  -69.15 | Worst: -285.89 | Div: 0.2493
+2026-09-12 18:28:32,524 [INFO] Gen   1 | Best:  337.26 | Avg:  -42.23 | Worst: -296.54 | Div: 0.2514
+2026-09-12 18:28:34,811 [INFO] Gen   2 | Best:  337.26 | Avg:  -18.04 | Worst: -260.60 | Div: 0.2293
+2026-09-12 18:28:37,391 [INFO] Gen   3 | Best:  379.18 | Avg:   -1.59 | Worst: -224.95 | Div: 0.2188
+2026-09-12 18:28:39,496 [INFO] Gen   4 | Best:  379.18 | Avg:   18.93 | Worst: -275.76 | Div: 0.2304
+2026-09-12 18:28:41,642 [INFO] Gen   5 | Best:  379.18 | Avg:    8.79 | Worst: -243.38 | Div: 0.2338
+2026-09-12 18:28:44,412 [INFO] Gen   6 | Best:  379.18 | Avg:    8.19 | Worst: -265.23 | Div: 0.2396
+2026-09-12 18:28:46,692 [INFO] Gen   7 | Best:  422.27 | Avg:   14.94 | Worst: -229.13 | Div: 0.2376
+2026-09-12 18:28:49,252 [INFO] Gen   8 | Best:  422.27 | Avg:    6.29 | Worst: -241.92 | Div: 0.2418
+2026-09-12 18:28:53,336 [INFO] Gen   9 | Best:  422.27 | Avg:   36.27 | Worst: -258.86 | Div: 0.2066
+2026-09-12 18:28:57,318 [INFO] Gen  10 | Best:  422.27 | Avg:   31.37 | Worst: -182.58 | Div: 0.2202
+2026-09-12 18:29:00,539 [INFO] Gen  11 | Best:  422.27 | Avg:   38.97 | Worst: -309.68 | Div: 0.2184
+2026-09-12 18:29:05,479 [INFO] Gen  12 | Best:  424.53 | Avg:   29.29 | Worst: -196.41 | Div: 0.2167
+2026-09-12 18:29:10,226 [INFO] Gen  13 | Best:  424.53 | Avg:   25.10 | Worst: -376.07 | Div: 0.2027
+2026-09-12 18:29:15,013 [INFO] Gen  14 | Best:  424.53 | Avg:   19.11 | Worst: -264.07 | Div: 0.2065
+2026-09-12 18:29:19,243 [INFO] Gen  15 | Best:  447.22 | Avg:   13.19 | Worst: -226.91 | Div: 0.2052
+2026-09-12 18:29:22,856 [INFO] Gen  16 | Best:  450.04 | Avg:   46.63 | Worst: -249.62 | Div: 0.2033
+2026-09-12 18:29:25,219 [INFO] Gen  17 | Best:  450.04 | Avg:   18.66 | Worst: -224.06 | Div: 0.2018
+2026-09-12 18:29:29,499 [INFO] Gen  18 | Best:  613.69 | Avg:   59.31 | Worst: -327.25 | Div: 0.1890
+2026-09-12 18:29:32,704 [INFO] Gen  19 | Best:  613.69 | Avg:  107.67 | Worst: -142.38 | Div: 0.1896
+2026-09-12 18:29:36,114 [INFO] Gen  20 | Best:  613.69 | Avg:  111.03 | Worst: -289.40 | Div: 0.1951
+2026-09-12 18:29:41,203 [INFO] Gen  21 | Best:  734.53 | Avg:  149.77 | Worst: -274.14 | Div: 0.1794
+2026-09-12 18:29:44,267 [INFO] Gen  22 | Best:  734.53 | Avg:  141.13 | Worst: -314.87 | Div: 0.1885
+2026-09-12 18:29:47,270 [INFO] Gen  23 | Best: 1228.51 | Avg:  154.92 | Worst: -212.63 | Div: 0.1906
+2026-09-12 18:29:50,429 [INFO] Gen  24 | Best: 1228.51 | Avg:  203.14 | Worst: -429.11 | Div: 0.1928
+2026-09-12 18:29:53,668 [INFO] Gen  25 | Best: 1228.51 | Avg:  244.34 | Worst: -252.93 | Div: 0.2012
+2026-09-12 18:29:56,218 [INFO] Gen  26 | Best: 1228.51 | Avg:  245.13 | Worst: -315.96 | Div: 0.2055
+2026-09-12 18:30:00,088 [INFO] Gen  27 | Best: 1228.51 | Avg:  310.21 | Worst: -419.36 | Div: 0.2052
+2026-09-12 18:30:03,687 [INFO] Gen  28 | Best: 1228.51 | Avg:  275.98 | Worst: -272.35 | Div: 0.2036
+2026-09-12 18:30:08,354 [INFO] Gen  29 | Best: 1228.51 | Avg:  328.27 | Worst: -213.45 | Div: 0.2034
+2026-09-12 18:30:11,948 [INFO] Gen  30 | Best: 1228.51 | Avg:  257.70 | Worst: -409.60 | Div: 0.2104
+2026-09-12 18:30:15,442 [INFO] Gen  31 | Best: 1228.51 | Avg:  259.17 | Worst: -229.63 | Div: 0.2125
+2026-09-12 18:30:18,614 [INFO] Gen  32 | Best: 1512.76 | Avg:  269.77 | Worst: -269.50 | Div: 0.2171
+2026-09-12 18:30:22,740 [INFO] Gen  33 | Best: 1512.76 | Avg:  273.59 | Worst: -294.70 | Div: 0.2172
+2026-09-12 18:30:25,946 [INFO] Gen  34 | Best: 1521.44 | Avg:  254.64 | Worst: -249.64 | Div: 0.2163
+2026-09-12 18:30:28,180 [INFO] Gen  35 | Best: 1585.28 | Avg:  317.07 | Worst: -255.05 | Div: 0.2230
+2026-09-12 18:30:30,609 [INFO] Gen  36 | Best: 1585.28 | Avg:  411.08 | Worst: -282.69 | Div: 0.2129
+2026-09-12 18:30:33,381 [INFO] Gen  37 | Best: 1585.28 | Avg:  414.65 | Worst: -422.74 | Div: 0.2113
+2026-09-12 18:30:35,708 [INFO] Gen  38 | Best: 1585.28 | Avg:  329.31 | Worst: -183.13 | Div: 0.2196
+2026-09-12 18:30:38,352 [INFO] Gen  39 | Best: 1585.28 | Avg:  420.70 | Worst: -336.75 | Div: 0.2180
+2026-09-12 18:30:40,721 [INFO] Gen  40 | Best: 1585.28 | Avg:  411.63 | Worst: -245.28 | Div: 0.2235
+2026-09-12 18:30:43,552 [INFO] Gen  41 | Best: 1646.12 | Avg:  395.13 | Worst: -259.75 | Div: 0.2180
+2026-09-12 18:30:46,167 [INFO] Gen  42 | Best: 1795.73 | Avg:  427.79 | Worst: -236.29 | Div: 0.2210
+2026-09-12 18:30:48,970 [INFO] Gen  43 | Best: 1803.50 | Avg:  451.90 | Worst: -286.44 | Div: 0.2241
+2026-09-12 18:30:51,698 [INFO] Gen  44 | Best: 1803.50 | Avg:  557.27 | Worst: -181.72 | Div: 0.2088
+2026-09-12 18:30:54,469 [INFO] Gen  45 | Best: 1803.50 | Avg:  607.00 | Worst: -236.94 | Div: 0.2071
+2026-09-12 18:30:57,429 [INFO] Gen  46 | Best: 1803.50 | Avg:  631.39 | Worst: -187.86 | Div: 0.2101
+2026-09-12 18:31:00,483 [INFO] Gen  47 | Best: 1803.50 | Avg:  561.18 | Worst: -211.52 | Div: 0.2089
+2026-09-12 18:31:03,379 [INFO] Gen  48 | Best: 1803.50 | Avg:  609.50 | Worst: -244.34 | Div: 0.2105
+2026-09-12 18:31:05,947 [INFO] Gen  49 | Best: 1803.50 | Avg:  532.58 | Worst: -169.12 | Div: 0.2139
+2026-09-12 18:31:08,654 [INFO] Gen  50 | Best: 1803.50 | Avg:  485.65 | Worst: -138.04 | Div: 0.2117
+2026-09-12 18:31:11,984 [INFO] Gen  51 | Best: 1881.91 | Avg:  557.97 | Worst: -296.31 | Div: 0.2118
+2026-09-12 18:31:15,651 [INFO] Gen  52 | Best: 1881.91 | Avg:  592.34 | Worst: -251.76 | Div: 0.1966
+2026-09-12 18:31:19,475 [INFO] Gen  53 | Best: 1881.91 | Avg:  586.47 | Worst: -288.01 | Div: 0.1900
+2026-09-12 18:31:22,603 [INFO] Gen  54 | Best: 1881.91 | Avg:  714.52 | Worst: -249.92 | Div: 0.1943
+2026-09-12 18:31:25,691 [INFO] Gen  55 | Best: 1881.91 | Avg:  596.59 | Worst: -276.44 | Div: 0.1944
+2026-09-12 18:31:28,201 [INFO] Gen  56 | Best: 2034.65 | Avg:  660.23 | Worst: -241.61 | Div: 0.1997
+2026-09-12 18:31:32,147 [INFO] Gen  57 | Best: 2034.65 | Avg:  741.97 | Worst: -162.90 | Div: 0.2049
+2026-09-12 18:31:36,224 [INFO] Gen  58 | Best: 2093.98 | Avg:  820.86 | Worst: -152.56 | Div: 0.2080
+2026-09-12 18:31:39,807 [INFO] Gen  59 | Best: 2202.27 | Avg:  767.57 | Worst: -199.34 | Div: 0.2055
+2026-09-12 18:31:42,443 [INFO] Gen  60 | Best: 2202.27 | Avg:  680.25 | Worst: -170.30 | Div: 0.2016
+2026-09-12 18:31:45,002 [INFO] Gen  61 | Best: 2417.96 | Avg:  741.40 | Worst: -220.54 | Div: 0.2011
+2026-09-12 18:31:47,638 [INFO] Gen  62 | Best: 2417.96 | Avg:  762.29 | Worst: -203.05 | Div: 0.2027
+2026-09-12 18:31:49,595 [INFO] Gen  63 | Best: 2417.96 | Avg:  595.03 | Worst: -151.30 | Div: 0.1742
+2026-09-12 18:31:51,940 [INFO] Gen  64 | Best: 2417.96 | Avg:  665.80 | Worst: -172.56 | Div: 0.1777
+2026-09-12 18:31:54,272 [INFO] Gen  65 | Best: 2417.96 | Avg:  753.95 | Worst: -110.14 | Div: 0.1782
+2026-09-12 18:31:56,433 [INFO] Gen  66 | Best: 2417.96 | Avg:  704.24 | Worst: -164.01 | Div: 0.1909
+2026-09-12 18:31:58,763 [INFO] Gen  67 | Best: 2417.96 | Avg:  670.64 | Worst: -248.31 | Div: 0.1928
+2026-09-12 18:32:01,279 [INFO] Gen  68 | Best: 2417.96 | Avg:  654.60 | Worst: -181.80 | Div: 0.1912
+2026-09-12 18:32:04,838 [INFO] Gen  69 | Best: 2417.96 | Avg:  899.57 | Worst: -112.22 | Div: 0.1895
+2026-09-12 18:32:07,470 [INFO] Gen  70 | Best: 2417.96 | Avg:  775.27 | Worst: -161.87 | Div: 0.1935
+2026-09-12 18:32:09,606 [INFO] Gen  71 | Best: 2417.96 | Avg:  691.19 | Worst: -135.77 | Div: 0.1888
+2026-09-12 18:32:11,789 [INFO] Gen  72 | Best: 2435.35 | Avg:  870.44 | Worst: -229.96 | Div: 0.1937
+2026-09-12 18:32:15,300 [INFO] Gen  73 | Best: 2435.35 | Avg:  937.90 | Worst: -229.93 | Div: 0.1865
+2026-09-12 18:32:18,597 [INFO] Gen  74 | Best: 2435.35 | Avg:  818.74 | Worst:  -96.58 | Div: 0.1889
+2026-09-12 18:32:21,752 [INFO] Gen  75 | Best: 2492.44 | Avg:  861.56 | Worst: -107.55 | Div: 0.1880
+2026-09-12 18:32:25,140 [INFO] Gen  76 | Best: 2492.44 | Avg:  715.49 | Worst: -223.94 | Div: 0.1943
+2026-09-12 18:32:28,236 [INFO] Gen  77 | Best: 2492.44 | Avg:  740.77 | Worst: -232.42 | Div: 0.1944
+2026-09-12 18:32:30,787 [INFO] Gen  78 | Best: 2492.44 | Avg:  793.47 | Worst: -108.22 | Div: 0.1917
+2026-09-12 18:32:33,257 [INFO] Gen  79 | Best: 2492.44 | Avg:  820.18 | Worst: -210.09 | Div: 0.1933
+2026-09-12 18:32:36,518 [INFO] Gen  80 | Best: 2492.44 | Avg:  768.01 | Worst: -195.99 | Div: 0.1898
+2026-09-12 18:32:39,619 [INFO] Gen  81 | Best: 2492.44 | Avg:  697.34 | Worst: -132.40 | Div: 0.1921
+2026-09-12 18:32:42,986 [INFO] Gen  82 | Best: 2492.44 | Avg:  762.34 | Worst: -137.38 | Div: 0.1911
+2026-09-12 18:32:46,863 [INFO] Gen  83 | Best: 3032.51 | Avg:  849.40 | Worst: -216.62 | Div: 0.1901
+2026-09-12 18:32:50,246 [INFO] Gen  84 | Best: 3032.51 | Avg: 1049.54 | Worst: -227.69 | Div: 0.1871
+2026-09-12 18:32:54,240 [INFO] Gen  85 | Best: 3032.51 | Avg:  961.35 | Worst: -283.16 | Div: 0.1878
+2026-09-12 18:32:57,772 [INFO] Gen  86 | Best: 3032.51 | Avg:  992.28 | Worst:  -76.27 | Div: 0.1879
+2026-09-12 18:33:00,195 [INFO] Gen  87 | Best: 3032.51 | Avg:  760.35 | Worst: -247.72 | Div: 0.1946
+2026-09-12 18:33:03,811 [INFO] Gen  88 | Best: 3032.51 | Avg:  816.28 | Worst: -149.04 | Div: 0.1929
+2026-09-12 18:33:07,793 [INFO] Gen  89 | Best: 3032.51 | Avg:  900.56 | Worst: -115.04 | Div: 0.2004
+2026-09-12 18:33:10,172 [INFO] Gen  90 | Best: 3032.51 | Avg:  891.01 | Worst:  -21.80 | Div: 0.1999
+2026-09-12 18:33:12,526 [INFO] Gen  91 | Best: 3032.51 | Avg:  863.67 | Worst: -164.03 | Div: 0.2005
+2026-09-12 18:33:15,094 [INFO] Gen  92 | Best: 3032.51 | Avg:  760.41 | Worst: -235.42 | Div: 0.1996
+2026-09-12 18:33:17,277 [INFO] Gen  93 | Best: 3032.51 | Avg:  769.18 | Worst: -259.62 | Div: 0.2023
+2026-09-12 18:33:19,548 [INFO] Gen  94 | Best: 3032.51 | Avg:  928.49 | Worst: -114.71 | Div: 0.2023
+2026-09-12 18:33:22,383 [INFO] Gen  95 | Best: 3032.51 | Avg:  844.72 | Worst: -194.55 | Div: 0.1985
+2026-09-12 18:33:25,316 [INFO] Gen  96 | Best: 3032.51 | Avg:  924.59 | Worst:  -58.50 | Div: 0.1924
+2026-09-12 18:33:28,213 [INFO] Gen  97 | Best: 3032.51 | Avg:  902.88 | Worst: -158.60 | Div: 0.1957
+2026-09-12 18:33:30,946 [INFO] Gen  98 | Best: 3032.51 | Avg:  901.56 | Worst:  -86.86 | Div: 0.1935
+2026-09-12 18:33:33,354 [INFO] Gen  99 | Best: 3032.51 | Avg:  942.33 | Worst: -158.04 | Div: 0.1907
+2026-09-12 18:33:34,239 [INFO] Training complete. Session best: models/best_model.pth | Universal best: models/universal_best.pth (3240.16)
+2026-09-12 18:35:09,325 [INFO] Rendering top 5 models...
+2026-09-12 18:36:16,068 [INFO] Rendering top 5 models...
+2026-09-12 18:43:32,937 [INFO] Rendering top 5 models...
+2026-09-17 05:45:15,080 [WARNING] No models found in models/. Run --train first.
+2026-09-17 05:45:48,309 [INFO] Starting training for 100 generations with population size 100, mutation_rate 0.15, workers 4... (Universal All-Time Record: None)
+2026-09-17 05:45:56,597 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 124.61 (Saved to models/universal_best.pth)
+2026-09-17 05:45:56,851 [INFO] Gen   0 | Best:  124.61 | Avg:  -64.08 | Worst: -269.82 | Div: 0.2493
+2026-09-17 05:45:58,641 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 128.48 (Saved to models/universal_best.pth)
+2026-09-17 05:45:58,674 [INFO] Gen   1 | Best:  128.48 | Avg:  -23.11 | Worst: -233.51 | Div: 0.2800
+2026-09-17 05:46:00,342 [INFO] Gen   2 | Best:  125.51 | Avg:  -18.12 | Worst: -270.37 | Div: 0.3018
+2026-09-17 05:46:01,968 [INFO] Gen   3 | Best:  124.28 | Avg:  -29.64 | Worst: -286.23 | Div: 0.3170
+2026-09-17 05:46:03,768 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 128.97 (Saved to models/universal_best.pth)
+2026-09-17 05:46:03,793 [INFO] Gen   4 | Best:  128.97 | Avg:  -16.20 | Worst: -256.75 | Div: 0.3302
+2026-09-17 05:46:05,564 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 271.64 (Saved to models/universal_best.pth)
+2026-09-17 05:46:05,607 [INFO] Gen   5 | Best:  271.64 | Avg:  -15.30 | Worst: -234.72 | Div: 0.3397
+2026-09-17 05:46:07,424 [INFO] Gen   6 | Best:  271.64 | Avg:  -14.72 | Worst: -264.49 | Div: 0.3546
+2026-09-17 05:46:09,518 [INFO] Gen   7 | Best:  271.64 | Avg:  -29.49 | Worst: -253.64 | Div: 0.3624
+2026-09-17 05:46:11,511 [INFO] Gen   8 | Best:  271.64 | Avg:  -10.00 | Worst: -224.85 | Div: 0.3742
+2026-09-17 05:46:13,818 [INFO] Gen   9 | Best:  271.64 | Avg:   -7.34 | Worst: -283.32 | Div: 0.3845
+2026-09-17 05:46:14,585 [INFO] Rendering top 5 models...
+2026-09-17 05:46:16,589 [INFO] Gen  10 | Best:  271.64 | Avg:  -17.13 | Worst: -277.00 | Div: 0.3940
+2026-09-17 05:46:19,113 [INFO] Gen  11 | Best:  271.64 | Avg:  -23.84 | Worst: -247.45 | Div: 0.4102
+2026-09-17 05:46:21,303 [INFO] Gen  12 | Best:  271.64 | Avg:  -20.42 | Worst: -310.52 | Div: 0.4180
+2026-09-17 05:46:23,693 [INFO] Gen  13 | Best:  271.64 | Avg:   -6.92 | Worst: -284.11 | Div: 0.4337
+2026-09-17 05:46:27,520 [INFO] Gen  14 | Best:  271.64 | Avg:   -4.30 | Worst: -231.82 | Div: 0.4378
+2026-09-17 05:46:30,015 [INFO] Gen  15 | Best:  271.64 | Avg:  -22.42 | Worst: -295.21 | Div: 0.4337
+2026-09-17 05:46:33,017 [INFO] Gen  16 | Best:  271.64 | Avg:  -10.38 | Worst: -205.70 | Div: 0.4421
+2026-09-17 05:46:35,340 [INFO] Gen  17 | Best:  271.64 | Avg:   -5.44 | Worst: -253.04 | Div: 0.4557
+2026-09-17 05:46:37,908 [INFO] Gen  18 | Best:  271.64 | Avg:    0.24 | Worst: -249.93 | Div: 0.4613
+2026-09-17 05:46:40,881 [INFO] Gen  19 | Best:  271.64 | Avg:  -10.33 | Worst: -359.30 | Div: 0.4689
+2026-09-17 05:46:43,909 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 290.73 (Saved to models/universal_best.pth)
+2026-09-17 05:46:43,937 [INFO] Gen  20 | Best:  290.73 | Avg:  -16.68 | Worst: -270.92 | Div: 0.4705
+2026-09-17 05:46:46,605 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 311.15 (Saved to models/universal_best.pth)
+2026-09-17 05:46:46,634 [INFO] Gen  21 | Best:  311.15 | Avg:   -1.03 | Worst: -284.61 | Div: 0.4762
+2026-09-17 05:46:48,570 [INFO] Rendering top 5 models...
+2026-09-17 05:46:49,963 [INFO] Gen  22 | Best:  300.12 | Avg:  -10.91 | Worst: -246.76 | Div: 0.4774
+2026-09-17 05:46:52,965 [INFO] Gen  23 | Best:  303.48 | Avg:  -28.27 | Worst: -261.59 | Div: 0.4792
+2026-09-17 05:46:56,461 [INFO] Gen  24 | Best:  303.97 | Avg:   -6.71 | Worst: -289.75 | Div: 0.4756
+2026-09-17 05:46:59,836 [INFO] Gen  25 | Best:  305.13 | Avg:    2.37 | Worst: -221.10 | Div: 0.4833
+2026-09-17 05:47:02,304 [INFO] Gen  26 | Best:  307.03 | Avg:  -13.68 | Worst: -279.39 | Div: 0.4873
+2026-09-17 05:47:05,440 [INFO] Gen  27 | Best:  309.25 | Avg:   -8.00 | Worst: -244.91 | Div: 0.4916
+2026-09-17 05:47:08,052 [INFO] Gen  28 | Best:  307.58 | Avg:  -15.38 | Worst: -229.14 | Div: 0.4870
+2026-09-17 05:47:10,723 [INFO] Gen  29 | Best:  299.29 | Avg:   -6.26 | Worst: -261.26 | Div: 0.4893
+2026-09-17 05:47:14,049 [INFO] Gen  30 | Best:  304.11 | Avg:    2.58 | Worst: -266.49 | Div: 0.4798
+2026-09-17 05:47:17,688 [INFO] Gen  31 | Best:  306.79 | Avg:    9.02 | Worst: -211.08 | Div: 0.4763
+2026-09-17 05:47:21,428 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 313.11 (Saved to models/universal_best.pth)
+2026-09-17 05:47:21,454 [INFO] Gen  32 | Best:  313.11 | Avg:    2.50 | Worst: -303.33 | Div: 0.4811
+2026-09-17 05:47:24,601 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 345.21 (Saved to models/universal_best.pth)
+2026-09-17 05:47:24,625 [INFO] Gen  33 | Best:  345.21 | Avg:   -7.59 | Worst: -250.26 | Div: 0.4892
+2026-09-17 05:47:27,921 [INFO] [UNIVERSAL RECORD] NEW UNIVERSAL ALL-TIME BEST MODEL! Fitness: 363.82 (Saved to models/universal_best.pth)
+2026-09-17 05:47:27,948 [INFO] Gen  34 | Best:  363.82 | Avg:   -3.49 | Worst: -283.25 | Div: 0.4818
+2026-09-17 05:47:31,620 [INFO] Gen  35 | Best:  362.97 | Avg:  -20.68 | Worst: -288.76 | Div: 0.4788
+2026-09-17 05:47:34,953 [INFO] Gen  36 | Best:  359.45 | Avg:   10.11 | Worst: -310.65 | Div: 0.4826
+2026-09-17 05:47:37,926 [INFO] Gen  37 | Best:  353.93 | Avg:  -17.35 | Worst: -246.20 | Div: 0.4735
+2026-09-17 05:47:41,026 [INFO] Gen  38 | Best:  353.12 | Avg:   -1.38 | Worst: -284.16 | Div: 0.4737
+2026-09-17 05:47:45,271 [INFO] Gen  39 | Best:  354.01 | Avg:    3.46 | Worst: -294.14 | Div: 0.4768
+2026-09-17 05:47:49,845 [INFO] Gen  40 | Best:  357.92 | Avg:   19.05 | Worst: -336.18 | Div: 0.4754
+2026-09-17 05:47:53,555 [INFO] Gen  41 | Best:  352.63 | Avg:   -6.52 | Worst: -266.38 | Div: 0.4709
+2026-09-17 05:47:59,357 [INFO] Gen  42 | Best:  351.35 | Avg:   11.09 | Worst: -243.68 | Div: 0.4676
+2026-09-17 05:48:05,232 [INFO] Gen  43 | Best:  353.45 | Avg:   -0.35 | Worst: -308.66 | Div: 0.4764
+2026-09-17 05:48:09,661 [INFO] Gen  44 | Best:  352.93 | Avg:    1.41 | Worst: -210.46 | Div: 0.4873
+2026-09-17 05:48:13,946 [INFO] Gen  45 | Best:  352.30 | Avg:   -7.86 | Worst: -267.55 | Div: 0.4885
+2026-09-17 05:48:18,214 [INFO] Gen  46 | Best:  358.43 | Avg:    4.27 | Worst: -238.23 | Div: 0.4848

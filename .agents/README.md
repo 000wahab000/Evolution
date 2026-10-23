@@ -20,15 +20,15 @@ The training signal is dead simple: **go right, don't fall**.
 
 The 15 network inputs at each timestep:
 
-| Input | What it is |
-| --- | --- |
-| `torso_angle` | Body tilt |
-| `torso_angular_velocity` | How fast it's rotating |
-| `torso_velocity_x/y` | Forward/vertical speed |
-| `torso_height` | How far off the ground |
-| `leg[0..3].angle` | Each leg's angle relative to torso |
-| `leg[0..3].angular_velocity` | Each leg's rotation speed |
-| `cpg_sin, cpg_cos` | Central Pattern Generator clock (30-step rhythm signal) |
+| Input                        | What it is                                              |
+| ---------------------------- | ------------------------------------------------------- |
+| `torso_angle`                | Body tilt                                               |
+| `torso_angular_velocity`     | How fast it's rotating                                  |
+| `torso_velocity_x/y`         | Forward/vertical speed                                  |
+| `torso_height`               | How far off the ground                                  |
+| `leg[0..3].angle`            | Each leg's angle relative to torso                      |
+| `leg[0..3].angular_velocity` | Each leg's rotation speed                               |
+| `cpg_sin, cpg_cos`           | Central Pattern Generator clock (30-step rhythm signal) |
 
 The CPG is a precomputed sine/cosine table that gives the network a sense of rhythmic timing - it can phase-lock its gait to it. Without it, the creature tends to spam all motors at max speed and goes nowhere.
 
@@ -55,6 +55,7 @@ Mutation: per-parameter random mask (rate 0.15) with Gaussian noise (scale 0.35)
 ## The terrain
 
 Flat ground from spawn to x=600. Then:
+
 - **Uphill** from x=600 to x=1600 (40px rise over 1000px)
 - **Downhill** from x=1600 to x=2600 (40px drop over 1000px)
 
@@ -69,28 +70,33 @@ pip install -r requirements.txt
 ```
 
 **Run the best saved model:**
+
 ```bash
 python main.py --render
 ```
 
 **Train from scratch:**
+
 ```bash
 python main.py --train --gens 100 --pop 50 --workers 4
 ```
 
 **Live web dashboard** (60fps canvas, SSE stream, start/pause/tune from browser):
+
 ```bash
 python app.py
 # open http://localhost:8000
 ```
 
 **Plot training history:**
+
 ```bash
 python scripts/plot_logs.py
 python scripts/plot_logs.py --live  # tails an active run
 ```
 
 **Docker:**
+
 ```bash
 docker compose up --build
 ```
@@ -99,13 +105,13 @@ docker compose up --build
 
 ## Stack
 
-| Piece | Why |
-| --- | --- |
-| **Pymunk** | 2D rigid body physics - fast, no GPU needed |
-| **PyTorch** | Neural net weights + crossover/mutation ops |
-| **Flask + SSE** | Real-time browser streaming without WebSockets |
-| **Python multiprocessing** | Parallel rollout evaluation across CPU cores |
-| **Matplotlib** | Training curve visualization |
+| Piece                      | Why                                            |
+| -------------------------- | ---------------------------------------------- |
+| **Pymunk**                 | 2D rigid body physics - fast, no GPU needed    |
+| **PyTorch**                | Neural net weights + crossover/mutation ops    |
+| **Flask + SSE**            | Real-time browser streaming without WebSockets |
+| **Python multiprocessing** | Parallel rollout evaluation across CPU cores   |
+| **Matplotlib**             | Training curve visualization                   |
 
 No Ray. No Stable-Baselines. No CUDA required.
 
@@ -115,13 +121,13 @@ No Ray. No Stable-Baselines. No CUDA required.
 
 The `--fitness-mode` flag changes what penalties get applied during rollout:
 
-| Mode | What it does |
-| --- | --- |
-| `baseline` | Reward = forward displacement only |
-| `tilt_penalized` | Also penalizes body angle deviation |
-| `energy_penalized` | Also penalizes total motor effort |
+| Mode                 | What it does                              |
+| -------------------- | ----------------------------------------- |
+| `baseline`           | Reward = forward displacement only        |
+| `tilt_penalized`     | Also penalizes body angle deviation       |
+| `energy_penalized`   | Also penalizes total motor effort         |
 | `ground_termination` | Episode ends immediately on torso contact |
-| `all_penalties` | Tilt + energy penalties combined |
+| `all_penalties`      | Tilt + energy penalties combined          |
 
 ---
 
@@ -143,14 +149,14 @@ tests/             - pytest suite
 
 ## Roadmap
 
-| Version | Status | What |
-| --- | --- | --- |
-| v1 - Straight-line walking | Done | Pymunk physics, CPG timing, GA baseline |
-| v2 - Multi-core + web dashboard | Done | Parallel rollouts, SSE browser streaming, Docker |
-| v3 - Procedural terrain | In progress | Continuously linked slope segments with progressive difficulty |
-| v4 - Horse + rider | Planned | Extended morphology, rider balance constraints |
-| v5 - Vision | Planned | Directional sensors for the rider |
-| v6 - Multi-agent battles | Planned | Competitive co-evolution, combat physics |
+| Version                         | Status      | What                                                           |
+| ------------------------------- | ----------- | -------------------------------------------------------------- |
+| v1 - Straight-line walking      | Done        | Pymunk physics, CPG timing, GA baseline                        |
+| v2 - Multi-core + web dashboard | Done        | Parallel rollouts, SSE browser streaming, Docker               |
+| v3 - Procedural terrain         | In progress | Continuously linked slope segments with progressive difficulty |
+| v4 - Horse + rider              | Planned     | Extended morphology, rider balance constraints                 |
+| v5 - Vision                     | Planned     | Directional sensors for the rider                              |
+| v6 - Multi-agent battles        | Planned     | Competitive co-evolution, combat physics                       |
 
 ---
 
@@ -165,4 +171,3 @@ The network is deliberately tiny (~256 params). It's enough to solve the gait. A
 ## License
 
 MIT
-

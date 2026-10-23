@@ -1,7 +1,7 @@
 import argparse
 import csv
-import json
 import logging
+import multiprocessing
 import os
 import random
 import time
@@ -17,14 +17,10 @@ from src.evolution import Population
 from src.model import CreatureBrain
 from src.utils import (
     UNIVERSAL_BEST_PATH,
-    UNIVERSAL_META_PATH,
     atomic_torch_save,
     load_universal_best_meta,
     save_universal_best,
 )
-
-import multiprocessing
-
 
 
 def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0.15, workers=None):
@@ -58,7 +54,8 @@ def train(generations=100, pop_size=50, fitness_mode="baseline", mutation_rate=0
 
     try:
         for gen in range(generations):
-            population.evaluate(fitness_mode=fitness_mode, pool=pool)
+            adaptive_steps = min(600, 200 + gen * 6)
+            population.evaluate(fitness_mode=fitness_mode, max_steps=adaptive_steps, pool=pool)
 
             gen_best_fitness = max(population.fitnesses)
             gen_best_idx = population.fitnesses.index(gen_best_fitness)
@@ -223,147 +220,14 @@ def render(render_universal=False):
             env.space.debug_draw(draw_options)
         t_render = (time.perf_counter() - t0) * 1000.0
 
-        # Phase 4: UI & Overlays (Ruler + Leader Stats + Latency HUD)
-        t0 = time.perf_counter()
-
-        # Draw Ruler
+        # Draw Ruler (Pixel Distance Markers on Ground)
         start_x = int(-tx) - (int(-tx) % 100)
         end_x = start_x + 900
-
         for x in range(start_x, end_x, 100):
             screen_x = x + tx
             pygame.draw.line(screen, (200, 200, 200), (screen_x, 500), (screen_x, 520), 2)
             label = font.render(f"{x}px", True, (150, 150, 150))
             screen.blit(label, (screen_x + 5, 505))
-
-        # Draw Left Panel 1: LEADER TELEMETRY
-        leader_idx = np.argmax([env.torso.position.x for env in envs])
-        leader_env = envs[leader_idx]
-        leader_action = actions[leader_idx] if actions[leader_idx] is not None else [0.0] * 4
-
-        l1_w, l1_h = 285, 215
-        l1_x, l1_y = 15, 15
-        l1_surf = pygame.Surface((l1_w, l1_h), pygame.SRCALPHA)
-        l1_surf.fill((18, 18, 24, 220))
-        pygame.draw.rect(l1_surf, (55, 55, 75), (0, 0, l1_w, l1_h), width=1, border_radius=6)
-        screen.blit(l1_surf, (l1_x, l1_y))
-
-        # Title & Record
-        screen.blit(hud_title_font.render(f"LEADER STATS (Creature {leader_idx + 1})", True, (255, 255, 255)), (l1_x + 12, l1_y + 10))
-        screen.blit(hud_font.render(f"Universal Record: {univ_score} pts", True, (56, 189, 248)), (l1_x + 12, l1_y + 30))
-        pygame.draw.line(screen, (60, 60, 80), (l1_x + 10, l1_y + 50), (l1_x + l1_w - 10, l1_y + 50), 1)
-
-        # Leader metrics
-        screen.blit(hud_font.render(f"Speed:       {leader_env.torso.velocity.x:6.1f} px/s", True, (200, 205, 215)), (l1_x + 12, l1_y + 56))
-        screen.blit(hud_font.render(f"Torso Angle: {leader_env.torso.angle:6.2f} rad", True, (200, 205, 215)), (l1_x + 12, l1_y + 76))
-        screen.blit(hud_bold.render("Motor Actions:", True, (255, 255, 255)), (l1_x + 12, l1_y + 96))
-
-        for leg_idx, a in enumerate(leader_action):
-            leg_y = l1_y + 115 + leg_idx * 19
-            screen.blit(hud_font.render(f"  Leg {leg_idx + 1}: {a * 100:5.1f}%", True, (180, 185, 195)), (l1_x + 12, leg_y))
-            # Mini motor activity bar
-            bar_w = 70
-            bar_x = l1_x + 195
-            pygame.draw.rect(screen, (35, 35, 45), (bar_x, leg_y + 3, bar_w, 8), border_radius=2)
-            fill_w = int(max(0.0, min(1.0, abs(a))) * bar_w)
-            bar_color = (34, 197, 94) if a >= 0 else (239, 68, 68)
-            pygame.draw.rect(screen, bar_color, (bar_x, leg_y + 3, fill_w, 8), border_radius=2)
-
-        # Leader distance readout
-        pygame.draw.line(screen, (60, 60, 80), (l1_x + 10, l1_y + 192), (l1_x + l1_w - 10, l1_y + 192), 1)
-        dist_text = f"Distance: {leader_env.torso.position.x - 400:.1f} px"
-        screen.blit(hud_bold.render(dist_text, True, (34, 197, 94)), (l1_x + 12, l1_y + 196))
-
-        # Draw Left Panel 2: RACE LEADERBOARD
-        l2_w, l2_h = 285, 195
-        l2_x, l2_y = 15, 240
-        l2_surf = pygame.Surface((l2_w, l2_h), pygame.SRCALPHA)
-        l2_surf.fill((18, 18, 24, 220))
-        pygame.draw.rect(l2_surf, (55, 55, 75), (0, 0, l2_w, l2_h), width=1, border_radius=6)
-        screen.blit(l2_surf, (l2_x, l2_y))
-
-        # Title & Step progress
-        max_steps = max(env.steps for env in envs)
-        screen.blit(hud_title_font.render("RACE LEADERBOARD", True, (255, 255, 255)), (l2_x + 12, l2_y + 10))
-        screen.blit(hud_font.render(f"Step: {max_steps:3d} / 600", True, (160, 165, 175)), (l2_x + 12, l2_y + 30))
-
-        pbar_w = 110
-        pbar_x = l2_x + 155
-        pygame.draw.rect(screen, (35, 35, 45), (pbar_x, l2_y + 33, pbar_w, 8), border_radius=2)
-        step_fill = int((max_steps / 600.0) * pbar_w)
-        pygame.draw.rect(screen, (56, 189, 248), (pbar_x, l2_y + 33, step_fill, 8), border_radius=2)
-
-        pygame.draw.line(screen, (60, 60, 80), (l2_x + 10, l2_y + 48), (l2_x + l2_w - 10, l2_y + 48), 1)
-
-        # Creature distances list
-        for i in range(5):
-            row_y = l2_y + 54 + i * 22
-            is_leader = (i == leader_idx)
-            c_dist = envs[i].torso.position.x - 400.0
-            is_done = dones[i]
-
-            c_color = (255, 215, 0) if is_leader else ((120, 125, 135) if is_done else (200, 205, 215))
-            prefix = "> " if is_leader else "  "
-            status_suffix = " (DONE)" if is_done else ""
-
-            row_text = f"{prefix}Creature {i + 1}: {c_dist:6.1f} px{status_suffix}"
-            surf = hud_bold.render(row_text, True, c_color) if is_leader else hud_font.render(row_text, True, c_color)
-            screen.blit(surf, (l2_x + 8, row_y))
-
-        # Bottom status
-        pygame.draw.line(screen, (60, 60, 80), (l2_x + 10, l2_y + 170), (l2_x + l2_w - 10, l2_y + 170), 1)
-        all_done = all(dones)
-        status_str = "Race: In Progress" if not all_done else "Race: Complete (Resetting...)"
-        status_col = (34, 197, 94) if not all_done else (234, 179, 8)
-        screen.blit(hud_font.render(status_str, True, status_col), (l2_x + 12, l2_y + 175))
-
-        # Update EMA for earlier stages
-        latencies["NN Inference"] = (1 - alpha) * latencies["NN Inference"] + alpha * t_nn
-        latencies["Physics Step"] = (1 - alpha) * latencies["Physics Step"] + alpha * t_phys
-        latencies["Pymunk Render"] = (1 - alpha) * latencies["Pymunk Render"] + alpha * t_render
-
-        # Determine dominant bottleneck
-        bottleneck_stage, bottleneck_val = max(latencies.items(), key=lambda item: item[1])
-        fps_est = 1000.0 / max(total_frame_ms, 0.001)
-
-        # Draw Latency HUD Card (Top-Right)
-        hud_w, hud_h = 285, 215
-        hud_x, hud_y = 500, 15
-        hud_surf = pygame.Surface((hud_w, hud_h), pygame.SRCALPHA)
-        hud_surf.fill((18, 18, 24, 220))
-        pygame.draw.rect(hud_surf, (55, 55, 75), (0, 0, hud_w, hud_h), width=1, border_radius=6)
-        screen.blit(hud_surf, (hud_x, hud_y))
-
-        # HUD Content
-        fps_color = (34, 197, 94) if fps_est >= 50 else ((234, 179, 8) if fps_est >= 30 else (239, 68, 68))
-        screen.blit(hud_title_font.render("LATENCY TELEMETRY", True, (255, 255, 255)), (hud_x + 12, hud_y + 10))
-
-        fps_text = f"FPS: {fps_est:4.1f} ({total_frame_ms:5.1f}ms)"
-        screen.blit(hud_bold.render(fps_text, True, fps_color), (hud_x + 12, hud_y + 32))
-
-        pygame.draw.line(screen, (60, 60, 80), (hud_x + 10, hud_y + 52), (hud_x + hud_w - 10, hud_y + 52), 1)
-
-        row_y = hud_y + 58
-        for name, val in latencies.items():
-            pct = (val / max(total_frame_ms, 0.001)) * 100.0
-            is_bn = (name == bottleneck_stage)
-            txt_color = (255, 85, 85) if is_bn else (200, 205, 215)
-            prefix = "> " if is_bn else "  "
-
-            label_surf = hud_bold.render(f"{prefix}{name}:", True, txt_color) if is_bn else hud_font.render(f"{prefix}{name}:", True, txt_color)
-            val_surf = hud_bold.render(f"{val:5.2f}ms ({pct:4.1f}%)", True, txt_color) if is_bn else hud_font.render(f"{val:5.2f}ms ({pct:4.1f}%)", True, txt_color)
-
-            screen.blit(label_surf, (hud_x + 8, row_y))
-            screen.blit(val_surf, (hud_x + 155, row_y))
-            row_y += 20
-
-        # Bottleneck Callout
-        pygame.draw.line(screen, (60, 60, 80), (hud_x + 10, row_y + 2), (hud_x + hud_w - 10, row_y + 2), 1)
-        bn_tag = f"BOTTLENECK: {bottleneck_stage}"
-        screen.blit(hud_bold.render(bn_tag[:32], True, (255, 75, 75)), (hud_x + 12, row_y + 7))
-
-        t_ui = (time.perf_counter() - t0) * 1000.0
-        latencies["UI / Overlays"] = (1 - alpha) * latencies["UI / Overlays"] + alpha * t_ui
 
         # Phase 5: Display Flip & VSync Tick
         t0 = time.perf_counter()

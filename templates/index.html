@@ -86,12 +86,15 @@
     /* Telemetry KPI Cards */
     .metrics-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
+      .metrics-row { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 700px) {
       .metrics-row { grid-template-columns: repeat(2, 1fr); }
     }
 
@@ -210,12 +213,51 @@
       font-weight: 600;
     }
 
+    /* Stats Strip */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: 2fr repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      align-items: center;
+    }
+
+    .stat-item { display: flex; flex-direction: column; gap: 2px; }
+    .stat-label { font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+    .stat-value { font-size: 0.95rem; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+    .goal-bar-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .goal-bar-track {
+      background: #18181b;
+      border: 1px solid var(--border);
+      height: 5px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .goal-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #22c55e);
+      width: 0%;
+      transition: width 0.15s linear;
+      border-radius: 2px;
+    }
+    .goal-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
     /* Motor Telemetry Bar */
     .motor-telemetry {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 0.5rem;
-      margin-top: 0.75rem;
+      margin-top: 0.5rem;
       padding: 0.6rem;
       background: #000000;
       border: 1px solid var(--border);
@@ -498,14 +540,24 @@
         <div class="metric-sub" id="subTrainStatus">Idle</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Best Active Fitness</div>
+        <div class="metric-label">Best Fitness</div>
         <div class="metric-value" id="valBestFitness">—</div>
         <div class="metric-sub" id="subAvgFitness">Avg: —</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Worst Fitness</div>
+        <div class="metric-value" id="valWorstFitness" style="color:var(--red)">—</div>
+        <div class="metric-sub" id="subSpread">Spread: —</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Population Diversity</div>
         <div class="metric-value" id="valDiversity">—</div>
         <div class="metric-sub">Weight Variance σ</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Throughput</div>
+        <div class="metric-value" id="valGensPerMin">—</div>
+        <div class="metric-sub">Gens / min</div>
       </div>
     </div>
 
@@ -537,6 +589,39 @@
           </div>
         </div>
 
+        <!-- Live Stats Strip -->
+        <div class="stats-strip">
+          <div class="goal-bar-wrap">
+            <div class="goal-bar-label">
+              <span>DISTANCE TO GOAL</span>
+              <span id="statDistPx">0 / 3600 px</span>
+            </div>
+            <div class="goal-bar-track">
+              <div class="goal-bar-fill" id="goalBarFill"></div>
+            </div>
+            <div class="goal-bar-label">
+              <span id="statDistM">0.00 m</span>
+              <span style="color:var(--green)">4000 px GOAL</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Speed</div>
+            <div class="stat-value" id="statSpeed">0.0 <span style="font-size:0.6rem;color:var(--text-muted)">px/s</span></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">ETA to Goal</div>
+            <div class="stat-value" id="statETA">— <span style="font-size:0.6rem;color:var(--text-muted)">s</span></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Torso Angle</div>
+            <div class="stat-value" id="statAngle">0.00 <span style="font-size:0.6rem;color:var(--text-muted)">rad</span></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Step</div>
+            <div class="stat-value" id="statStep">0 <span style="font-size:0.6rem;color:var(--text-muted)">/2500</span></div>
+          </div>
+        </div>
+
         <!-- Real-time Motor Force Telemetry Bars -->
         <div class="motor-telemetry">
           <div class="motor-item">
@@ -558,7 +643,7 @@
         </div>
 
         <div class="viewport-footer">
-          <span style="color:var(--text-muted); font-size:0.75rem;">60 FPS Client-Side Pymunk Telemetry Stream</span>
+          <span style="color:var(--text-muted); font-size:0.75rem;">45 FPS Server-Side Pymunk Stream</span>
           <button class="btn btn-sm" onclick="reconnectStream()">↺ Reset Stream</button>
         </div>
       </div>
@@ -690,9 +775,14 @@
       sseSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          currentFrame = data;
-          updateHUD(data);
-          updateMotorTelemetry(data.actions);
+          if (data.type === 'full') {
+            window.simState = data;
+          } else {
+            Object.assign(window.simState || {}, data);
+          }
+          currentFrame = window.simState;
+          updateHUD(currentFrame);
+          updateMotorTelemetry(currentFrame.actions);
         } catch (e) {}
       };
 
@@ -719,7 +809,31 @@
       document.getElementById('hudDistance').textContent = `${dist} px (${meters} m)`;
       document.getElementById('hudSpeed').textContent = (data.velocity_x || 0).toFixed(1) + ' px/s';
       document.getElementById('hudAngle').textContent = (data.angle || 0).toFixed(2) + ' rad';
-      document.getElementById('hudStep').textContent = `${data.steps || 0} / 600`;
+      document.getElementById('hudStep').textContent = `${data.steps || 0} / 2500`;
+
+      // Stats strip
+      const rawDist = Math.max(0, data.distance || 0);
+      const goalPx = 3600; // 4000 - 400 spawn offset
+      const pct = Math.min(100, (rawDist / goalPx) * 100);
+      document.getElementById('goalBarFill').style.width = pct + '%';
+      document.getElementById('statDistPx').textContent = `${rawDist.toFixed(0)} / ${goalPx} px`;
+      document.getElementById('statDistM').textContent = `${meters} m`;
+      const spd = Math.abs(data.velocity_x || 0);
+      document.getElementById('statSpeed').innerHTML = `${spd.toFixed(1)} <span style="font-size:0.6rem;color:var(--text-muted)">px/s</span>`;
+      // ETA to goal
+      const remaining = goalPx - rawDist;
+      if (spd > 0.5 && remaining > 0) {
+        const etaSec = (remaining / spd).toFixed(1);
+        document.getElementById('statETA').innerHTML = `${etaSec} <span style="font-size:0.6rem;color:var(--text-muted)">s</span>`;
+      } else if (remaining <= 0) {
+        document.getElementById('statETA').innerHTML = `<span style="color:var(--green)">DONE</span>`;
+      } else {
+        document.getElementById('statETA').textContent = '—';
+      }
+      const angleVal = (data.angle || 0);
+      const angleColor = Math.abs(angleVal) > 0.8 ? 'var(--red)' : Math.abs(angleVal) > 0.4 ? 'var(--yellow)' : '#fff';
+      document.getElementById('statAngle').innerHTML = `<span style="color:${angleColor}">${angleVal.toFixed(2)}</span> <span style="font-size:0.6rem;color:var(--text-muted)">rad</span>`;
+      document.getElementById('statStep').innerHTML = `${data.steps || 0} <span style="font-size:0.6rem;color:var(--text-muted)">/2500</span>`;
     }
 
     function updateMotorTelemetry(actions) {
@@ -759,7 +873,7 @@
         ctx.scale(currentZoom, currentZoom);
         ctx.translate(-canvas.width / 2 + (offsetX / currentZoom), -canvas.height / 2 + (offsetY / currentZoom));
 
-        // Ground Plane Line
+        // Ground Plane Line (flat baseline)
         ctx.strokeStyle = '#27272a';
         ctx.lineWidth = 2 / currentZoom;
         ctx.beginPath();
@@ -767,9 +881,35 @@
         ctx.lineTo(10000, 500);
         ctx.stroke();
 
+        // Terrain: Uphill segment (600→1600)
+        ctx.strokeStyle = '#3f3f46';
+        ctx.lineWidth = 4 / currentZoom;
+        ctx.beginPath();
+        ctx.moveTo(600, 500);
+        ctx.lineTo(1600, 460);
+        ctx.stroke();
+        // Terrain: Downhill segment (1600→2600)
+        ctx.beginPath();
+        ctx.moveTo(1600, 460);
+        ctx.lineTo(2600, 540);
+        ctx.stroke();
+
+        // Goal line at x=4000
+        ctx.strokeStyle = 'rgba(34,197,94,0.4)';
+        ctx.lineWidth = 2 / currentZoom;
+        ctx.setLineDash([6 / currentZoom, 4 / currentZoom]);
+        ctx.beginPath();
+        ctx.moveTo(4000, 350);
+        ctx.lineTo(4000, 520);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(34,197,94,0.7)';
+        ctx.font = `${11 / currentZoom}px JetBrains Mono`;
+        ctx.fillText('GOAL', 4005, 380);
+
         // Ground Distance Ticks
         ctx.fillStyle = '#71717a';
-        ctx.font = '11px JetBrains Mono';
+        ctx.font = `${11 / currentZoom}px JetBrains Mono`;
         const startX = Math.floor((smoothCamX - (canvas.width / currentZoom)) / 100) * 100;
         const endX = smoothCamX + (canvas.width / currentZoom);
 
@@ -780,6 +920,7 @@
           ctx.strokeStyle = '#3f3f46';
           ctx.lineWidth = 1 / currentZoom;
           ctx.stroke();
+          ctx.fillStyle = '#71717a';
           ctx.fillText(`${x - 400}px`, x - 15, 525);
         }
 
@@ -873,8 +1014,18 @@
           if (state.avg_fitness != null) {
             document.getElementById('subAvgFitness').textContent = `Avg: ${state.avg_fitness.toFixed(1)}`;
           }
+          if (state.worst_fitness != null) {
+            document.getElementById('valWorstFitness').textContent = state.worst_fitness.toFixed(1);
+          }
+          if (state.best_fitness != null && state.worst_fitness != null) {
+            const spread = (state.best_fitness - state.worst_fitness).toFixed(1);
+            document.getElementById('subSpread').textContent = `Spread: ${spread}`;
+          }
           if (state.diversity_score != null) {
             document.getElementById('valDiversity').textContent = state.diversity_score.toFixed(4);
+          }
+          if (state.gens_per_min != null) {
+            document.getElementById('valGensPerMin').textContent = state.gens_per_min.toFixed(1);
           }
 
           const pct = Math.min(100, (state.current_generation / state.total_generations) * 100);

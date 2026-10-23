@@ -13,6 +13,10 @@ from src.environment import CreatureEnv
 from src.evolution import Population
 from src.model import CreatureBrain
 from src.utils import atomic_torch_save, load_universal_best_meta, save_universal_best
+from src.s3_sync import pull_models, push_model
+
+# Sync existing checkpoints from S3 on startup if configured
+pull_models()
 
 app = Flask(__name__)
 
@@ -24,6 +28,7 @@ training_state = {
     "total_generations": 100,
     "best_fitness": None,
     "avg_fitness": None,
+    "worst_fitness": None,
     "diversity_score": None,
     "population_size": 50,
     "mutation_rate": 0.15,
@@ -31,6 +36,7 @@ training_state = {
     "workers": 4,
     "paused": False,
     "error": None,
+    "gens_per_min": None,
 }
 training_thread = None
 
@@ -59,6 +65,7 @@ def run_training_loop():
         pool = multiprocessing.Pool(processes=workers) if workers > 1 else None
 
         try:
+            gen_times = []
             for gen in range(training_state["total_generations"]):
                 while training_state["paused"] and training_state["is_training"]:
                     time.sleep(0.5)
@@ -66,11 +73,13 @@ def run_training_loop():
                 if not training_state["is_training"]:
                     break
 
+                gen_start = time.time()
                 training_state["current_generation"] = gen + 1
                 pop.mutation_rate = training_state["mutation_rate"]
 
                 # Evaluate population across pool
-                pop.evaluate(fitness_mode=training_state["fitness_mode"], pool=pool)
+                adaptive_steps = min(600, 200 + gen * 6)
+                pop.evaluate(fitness_mode=training_state["fitness_mode"], max_steps=adaptive_steps, pool=pool)
 
                 gen_best_fitness = max(pop.fitnesses)
                 gen_best_idx = pop.fitnesses.index(gen_best_fitness)
@@ -85,18 +94,29 @@ def run_training_loop():
 
                 training_state["best_fitness"] = float(gen_best_fitness)
                 training_state["avg_fitness"] = avg_fit
+                training_state["worst_fitness"] = worst_fit
                 training_state["diversity_score"] = diversity
 
+                gen_elapsed = time.time() - gen_start
+                gen_times.append(gen_elapsed)
+                if len(gen_times) >= 3:
+                    avg_gen_time = sum(gen_times[-5:]) / len(gen_times[-5:])
+                    training_state["gens_per_min"] = round(60.0 / avg_gen_time, 1)
+
                 # Save session best
-                atomic_torch_save(pop.models[gen_best_idx].state_dict(), os.path.join("models", "best_model.pth"))
+                best_model_path = os.path.join("models", "best_model.pth")
+                atomic_torch_save(pop.models[gen_best_idx].state_dict(), best_model_path)
+                push_model(best_model_path, "models/best_model.pth")
 
                 # Save top 5
                 sorted_indices = np.argsort(pop.fitnesses)[::-1]
                 for idx_rank in range(min(5, len(pop.models))):
+                    top_model_path = os.path.join("models", f"top_{idx_rank}.pth")
                     atomic_torch_save(
                         pop.models[sorted_indices[idx_rank]].state_dict(),
-                        os.path.join("models", f"top_{idx_rank}.pth"),
+                        top_model_path,
                     )
+                    push_model(top_model_path, f"models/top_{idx_rank}.pth")
 
                 # Universal record update
                 current_univ = float(load_universal_best_meta().get("best_fitness", -float("inf")))
@@ -109,6 +129,8 @@ def run_training_loop():
                         pop_size=training_state["population_size"],
                         mutation_rate=training_state["mutation_rate"],
                     )
+                    push_model(os.path.join("models", "universal_best.pth"), "models/universal_best.pth")
+                    push_model(os.path.join("models", "universal_best.json"), "models/universal_best.json")
 
                 with open(history_path, "a", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
@@ -249,7 +271,10 @@ def stream_simulation():
         done = False
         step_idx = 0
 
+        prev_frame = {}
+
         while True:
+            frame_start = time.perf_counter()
             action = brain.get_action(state)
             state, reward, done, fallen = env.step(action)
             step_idx += 1
@@ -261,8 +286,20 @@ def stream_simulation():
             frame["actions"] = [round(float(a), 3) for a in action]
             frame["distance_meters"] = round(float(env.torso.position.x - 400.0) * 0.02, 2)
 
-            yield f"data: {json.dumps(frame)}\n\n"
-            time.sleep(1.0 / 45.0)
+            if not prev_frame:
+                payload = {"type": "full"}
+                payload.update(frame)
+            else:
+                delta = {k: v for k, v in frame.items() if v != prev_frame.get(k)}
+                delta["type"] = "delta"
+                delta["steps"] = frame["steps"]
+                payload = delta
+            prev_frame = frame.copy()
+            if done or step_idx >= 600:
+                prev_frame = {}
+            yield "data: " + json.dumps(payload) + "\n\n"
+            frame_end = time.perf_counter()
+            time.sleep(max(0.0, (1.0 / 45.0) - (frame_end - frame_start)))
 
             if done or step_idx >= 600:
                 state = env.reset()
