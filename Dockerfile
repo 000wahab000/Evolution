@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
 # Pre-create runtime directories and set ownership.
-RUN mkdir -p /app/logs /app/models && chown -R appuser:appuser /app
+RUN mkdir -p /app/data/logs /app/data/models && chown -R appuser:appuser /app
 
 # Copy application code into container.
 COPY --chown=appuser:appuser . .

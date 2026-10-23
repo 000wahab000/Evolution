@@ -173,17 +173,25 @@ The `--fitness-mode` flag changes what penalties get applied during rollout:
 ## Project layout
 
 ```
+main.py            - Command-line training (python main.py --train)
+app.py             - Flask web dashboard; this is what Render runs
 src/
   environment.py   - Pymunk physics world, creature construction, reward logic
   evolution.py     - Population class, crossover, mutation, rollout dispatch
   model.py         - CreatureBrain (15→16→4 tanh network)
+  terrain.py       - Course builders (legacy, fixed, seeded random)
+  gym_env.py       - Gymnasium wrapper (Evolution1-Quadruped-v0)
+  research/        - Seeded experiments: optimizers, evaluation, stats, figures
 data/models/       - Saved checkpoints (best_model.npz, top_0..4.npz)
-data/logs/         - Training history CSVs and evolution.log
-web/templates/     - Flask HTML template for the web dashboard
+data/logs/         - history.csv (tracked, drives the chart); evolution.log (local only)
+web/templates/     - Dashboard HTML
 web/static/replays/ - Recorded episodes the dashboard plays back (scripts/record_replay.py)
-docs/              - Study guide (LEARNING.md), strategy, plans, README media
-scripts/           - plot_logs.py, record_replay.py, other utilities
+experiments/       - Experiment configs and pre-registered hypotheses
+notebooks/         - playground.ipynb (Colab or local)
+scripts/           - record_replay.py, run_experiment.py, analyze.py, plot_logs.py, ...
+docs/              - Study guide (LEARNING.md), strategy, plans, research notes, media
 tests/             - pytest suite
+Dockerfile, compose.yaml - Container build (Render) and local docker compose
 ```
 
 ---

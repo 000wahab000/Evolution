@@ -265,7 +265,7 @@ This is the most surprising thing in the project.
 
 ## Module 10: Shipping it (Docker, Render, accessibility)
 
-**Read:** `Dockerfile`, `.dockerignore`, `requirements.txt`, the "Deploy (Render)" section of `README.md`, and both plans in `docs/plans/`
+**Read:** `Dockerfile`, `.dockerignore`, `requirements.txt`, the "Deploy (Render)" section of `README.md`, and the two 2026-10-11 plans in `docs/plans/` (Render deploy, debloat + 3D replay)
 
 **Concepts:**
 - **Docker:** an image is your app plus its dependencies, frozen. Each line of the Dockerfile adds a layer, and layers are cached.
