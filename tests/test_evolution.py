@@ -1,4 +1,5 @@
 import numpy as np
+
 from src.evolution import Population
 from src.model import CreatureBrain
 

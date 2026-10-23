@@ -20,6 +20,9 @@ node_modules/
 package-lock.json
 package.json
 
+# Training run log (written by main.py / app.py; history.csv stays tracked for the dashboard chart)
+data/logs/evolution.log
+
 # Generated plot outputs (scripts/plot_logs.py)
 data/logs/dashboard.html
 data/logs/evolution_graph.png

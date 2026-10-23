@@ -1,5 +1,7 @@
 import pytest
+
 from src.environment import CreatureEnv
+
 
 def test_environment_initialization():
     env = CreatureEnv(fitness_mode="baseline")

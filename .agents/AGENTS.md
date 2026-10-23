@@ -7,8 +7,7 @@
 - **`data/logs/`**: Training logs and metrics (`history.csv`, `evolution.log`).
 - **`web/`**: Dashboard template (`web/templates/index.html`) and recorded replays (`web/static/replays/`).
 - **`tests/`**: Pytest test suite (`test_environment.py`).
-- **`docs/`**: Study guide, `STRATEGY.md`, plans, and README media (`docs/media/`).
-- **`docs/solutions/`**: Documented solutions to past technical challenges and bug fixes.
+- **`docs/`**: Study guide, `STRATEGY.md`, plans, research notes, and README media (`docs/media/`).
 
 ## Model & File Location Rules
 

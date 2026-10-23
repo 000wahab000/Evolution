@@ -1,8 +1,14 @@
 import os
 
 import numpy as np
+
 from src.model import CreatureBrain
-from src.utils import atomic_save, load_state_dict_file, load_universal_best_meta, save_universal_best
+from src.utils import (
+    atomic_save,
+    load_state_dict_file,
+    load_universal_best_meta,
+    save_universal_best,
+)
 
 
 def test_atomic_save(tmp_path):

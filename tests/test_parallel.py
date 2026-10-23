@@ -1,6 +1,7 @@
 import multiprocessing
-import pytest
+
 import numpy as np
+import pytest
 
 from src.evolution import Population, evaluate_genome
 from src.model import CreatureBrain
