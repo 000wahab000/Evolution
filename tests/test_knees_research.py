@@ -15,7 +15,7 @@ KNEE_TINY = {**TINY, "variants": {"knees": {"knees": True}}}
 def test_straight_hash_unchanged():
     cfg = ExperimentConfig.from_dict(TINY).resolve("cpg", 0)
     d = asdict(cfg)
-    del d["knees"]
+    del d["knees"], d["fall_rule"]
     assert cfg.sha256() == config_sha256(d)
 
 

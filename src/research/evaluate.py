@@ -94,7 +94,8 @@ def shuffle_perm(cfg):
 def make_env(cfg, scenario, substeps=1):
     return CreatureEnv(terrain=scenario.terrain.scaled_friction(scenario.friction_scale),
                        cpg_mode=cfg.brain_input, cpg_rng=make_rng(scenario.cpg_seed, "cpg"),
-                       cpg_perm=shuffle_perm(cfg), substeps=substeps, knees=cfg.knees)
+                       cpg_perm=shuffle_perm(cfg), substeps=substeps, knees=cfg.knees,
+                       fall_rule=cfg.fall_rule)
 
 
 def rollout(params, cfg, scenario, substeps=1, record=False):

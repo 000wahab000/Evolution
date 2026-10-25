@@ -31,13 +31,19 @@ def run_episode(env, brain, max_steps=600, pose_noise=None, on_step=None):
 
 class CreatureEnv:
     def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1,
-                 cpg_perm=None, knees=False):
+                 cpg_perm=None, knees=False, fall_rule="touch"):
         """terrain: TerrainSpec (default: the legacy course). cpg_mode replaces state[13:15]:
         cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (the 30-step table read
         through cpg_perm, a fixed permutation chosen once per run). substeps>1 splits each step
         into that many physics steps of 3/60/substeps; all step counters still count brain steps.
         knees: each leg is thigh + shin with a one-way knee (8 motors, state grows by 8;
-        a positive knee action swings the foot backward)."""
+        knee action -1 bends the knee (foot moves forward of the knee), +1 straightens it). knees="spot": Spot-like knees (limit
+        14-150 deg, bent 30 deg at reset, hips +-90 deg). fall_rule: "touch" (torso on the ground
+        ends the episode) or "penalty" (reward -2 per touching step, no fall for touching)."""
+        if knees not in (False, True, "spot"):
+            raise ValueError("knees must be False, True or 'spot'")
+        if fall_rule not in ("touch", "penalty"):
+            raise ValueError("fall_rule must be 'touch' or 'penalty'")
         if cpg_mode not in CPG_MODES:
             raise ValueError(f"cpg_mode must be one of {CPG_MODES}")
         if cpg_mode == "noise" and cpg_rng is None:
@@ -51,6 +57,8 @@ class CreatureEnv:
         self.cpg_perm = list(cpg_perm) if cpg_mode == "shuffled" else None
         self.substeps = int(substeps)
         self.knees = bool(knees)
+        self.spot = knees == "spot"
+        self.fall_rule = fall_rule
         self.space = pymunk.Space()
         self.space.gravity = (0, 900)
         self.create_ground()
@@ -110,6 +118,7 @@ class CreatureEnv:
 
     def create_kneed_legs(self, leg_mass, leg_width, seg):
         self.seg_length = seg
+        self.knee_range = (-math.radians(150), -math.radians(14)) if self.spot else (-np.pi / 2, 0.0)
         self.shins = []
         self.shin_shapes = []
         knee_motors = []
@@ -132,11 +141,12 @@ class CreatureEnv:
             self.legs.append(thigh)
             self.shins.append(shin)
             pivot = pymunk.PivotJoint(self.torso, thigh, anchor, (0, -seg / 2))
-            limit = pymunk.RotaryLimitJoint(self.torso, thigh, -np.pi / 3, np.pi / 3)
+            hip_range = np.pi / 2 if self.spot else np.pi / 3
+            limit = pymunk.RotaryLimitJoint(self.torso, thigh, -hip_range, hip_range)
             motor = pymunk.SimpleMotor(self.torso, thigh, 0)
             motor.max_force = 150000
             knee = pymunk.PivotJoint(thigh, shin, (0, seg / 2), (0, -seg / 2))
-            knee_limit = pymunk.RotaryLimitJoint(thigh, shin, -np.pi / 2, 0)
+            knee_limit = pymunk.RotaryLimitJoint(thigh, shin, *self.knee_range)
             knee_motor = pymunk.SimpleMotor(thigh, shin, 0)
             knee_motor.max_force = 75000
             self.space.add(pivot, limit, motor, knee, knee_limit, knee_motor)
@@ -144,6 +154,24 @@ class CreatureEnv:
             self.motors.append(motor)
             knee_motors.append(knee_motor)
         self.motors.extend(knee_motors)
+
+    def clamp_knees(self):
+        """The limit joint only reacts after a knee is already past its limit and the motor
+        overpowers it (116-128 deg seen on a 90 deg limit). After each physics step, rotate any
+        out-of-range shin back about its knee pivot and drop its outward relative spin."""
+        lo, hi = self.knee_range
+        for thigh, shin in zip(self.legs, self.shins):
+            rel = shin.angle - thigh.angle
+            if lo <= rel <= hi:
+                continue
+            d = (lo if rel < lo else hi) - rel
+            knee = thigh.local_to_world((0, self.seg_length / 2))
+            c, s_ = math.cos(d), math.sin(d)
+            off = shin.position - knee
+            shin.position = (knee.x + c * off.x - s_ * off.y, knee.y + s_ * off.x + c * off.y)
+            shin.angle += d
+            if (shin.angular_velocity - thigh.angular_velocity) * d < 0:
+                shin.angular_velocity = thigh.angular_velocity
 
     def reset(self, pose_noise=None):
         """pose_noise: optional 4 leg angles (rad) applied by rotating each leg about its pivot."""
@@ -166,12 +194,20 @@ class CreatureEnv:
             leg.angular_velocity = 0.0
         if self.knees:
             h = self.seg_length / 2
+            knee = -math.radians(30) if self.spot else 0.0
+            thigh_tilt = -knee / 2  # spot: foot ends up roughly under the hip
+            torso_y = 450.0
+            if self.spot:  # feet touch the ground: vertical leg height = 20cos(thigh) + 20cos(thigh+knee)
+                torso_y = 500.0 - 10.0 - 2 * h * (math.cos(thigh_tilt) + math.cos(thigh_tilt + knee)) / 2
+                self.torso.position = (400, torso_y)
             for i, (leg, shin, anchor) in enumerate(zip(self.legs, self.shins, self.anchors)):
-                th = float(pose_noise[i]) if pose_noise is not None else 0.0
-                s_, c_ = math.sin(th), math.cos(th)
-                leg.position = (400 + anchor[0] - h * s_, 450 + anchor[1] + h * c_)
-                shin.position = (400 + anchor[0] - 3 * h * s_, 450 + anchor[1] + 3 * h * c_)
-                leg.angle = shin.angle = th
+                th = thigh_tilt + (float(pose_noise[i]) if pose_noise is not None else 0.0)
+                sh = th + knee
+                hip = (400 + anchor[0], torso_y + anchor[1])
+                leg.position = (hip[0] - h * math.sin(th), hip[1] + h * math.cos(th))
+                kx, ky = hip[0] - 2 * h * math.sin(th), hip[1] + 2 * h * math.cos(th)
+                shin.position = (kx - h * math.sin(sh), ky + h * math.cos(sh))
+                leg.angle, shin.angle = th, sh
                 for b in (leg, shin):
                     b.velocity = (0.0, 0.0)
                     b.angular_velocity = 0.0
@@ -188,6 +224,8 @@ class CreatureEnv:
         old_x = self.torso.position.x
         for _ in range(self.substeps):
             self.space.step(3 / 60.0 / self.substeps)
+            if self.knees:
+                self.clamp_knees()
         self.steps += 1
         state = self.get_state()
         displacement = self.torso.position.x - old_x
@@ -215,7 +253,11 @@ class CreatureEnv:
             reward -= 0.1
         else:
             self.still_steps = 0
-        if self.fitness_mode in ["ground_termination", "touch_ground"]:
+        if self.fall_rule == "penalty":
+            if body_touched_ground:
+                reward -= 2.0
+            fallen = abs(torso_angle) > 1.2 or self.torso.position.y > deep
+        elif self.fitness_mode in ["ground_termination", "touch_ground"]:
             fallen = body_touched_ground or abs(torso_angle) > 1.2 or self.torso.position.y > deep
         else:
             fallen = abs(torso_angle) > 1.2 or self.torso.position.y > deep or body_touched_ground

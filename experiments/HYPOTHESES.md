@@ -26,6 +26,12 @@ prints that tag. Results are reported whether they confirm or refute these hypot
   the budget, H6/H7 are reported as inconclusive rather than refuted. Knee strength may only be tuned before
   the full run, using train/validation splits only.
 
+**Experiment 4, knees v2** (`experiments/exp4_knees_v2.json`, optimizer `ga`, all variants under the `penalty` fall rule: torso on the ground costs -2 reward per step and does not end the episode; knee limits are enforced):
+- **H8:** Under the penalty rule, kneed walkers reach a higher held-out test distance IQM than straight-legged walkers.
+- **H9:** Spot-like kneed walkers (`knees_spot`: knee range 14-150 deg, hips +-90 deg) reach a higher held-out test distance IQM than plain kneed walkers.
+- H10 (descriptive only, not tested): kneed walkers fall less often than exp3's 100%.
+- Holm set: exp4: H8, H9. Absolute distances are not compared with exp3 (different runner hardware).
+
 ## Confirmatory contrasts
 
 | Id | A | B | Metric (per seed) | Predicted |
@@ -37,13 +43,15 @@ prints that tag. Results are reported whether they confirm or refute these hypot
 | H5a-c | ga, cmaes, openai_es | random_search | test distance (M1) | A > B |
 | H6 | knees | straight | test distance (M1) | A > B |
 | H7 | knees | straight | fall rate (M2) | A < B |
+| H8 | knees | straight | test distance (M1), penalty fall rule | A > B |
+| H9 | knees_spot | knees | test distance (M1), penalty fall rule | A > B |
 
 All other pairs are **exploratory** and are labelled as such in REPORT.md.
 
 ## Analysis rules
 
 - **Tests:** two-sided Mann-Whitney U per contrast. Holm correction is applied only within each
-  experiment's confirmatory set (exp1: H1-H3; exp2: H4, H5a-c; exp3: H6, H7), alpha = 0.05.
+  experiment's confirmatory set (exp1: H1-H3; exp2: H4, H5a-c; exp3: H6, H7; exp4: H8, H9), alpha = 0.05.
 - **Verdict:** *supported* if the Holm-adjusted p < 0.05 **and** the 95% bootstrap CI (10,000
   resamples) of the IQM difference A − B excludes 0 in the predicted direction. *Not supported* if
   both hold in the opposite direction. Otherwise *inconclusive*.

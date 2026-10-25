@@ -22,7 +22,8 @@ class RunConfig:
     optimizer: str = "ga"
     optimizer_params: dict = field(default_factory=dict)
     brain_input: str = "cpg"
-    knees: bool = False
+    knees: bool | str = False  # False, True or "spot"
+    fall_rule: str = "touch"
     episodes_budget: int = 25000
     rollouts_k: int = 5
     max_steps: int = 600
@@ -49,6 +50,8 @@ class RunConfig:
         d = asdict(self)
         if not d["knees"]:
             del d["knees"]  # keeps every pre-knees run hash unchanged
+        if d["fall_rule"] == "touch":
+            del d["fall_rule"]
         return config_sha256(d)
 
 

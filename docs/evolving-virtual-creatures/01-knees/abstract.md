@@ -2,7 +2,7 @@
 
 ## What we're changing
 
-Today each leg is one stiff 40-pixel stick with one motor at the hip. With knees, each leg becomes a 20 px thigh and a 20 px shin joined by a knee. The knee bends only one way (0 to 90°, with the foot swinging backward) and has its own motor.
+Today each leg is one stiff 40-pixel stick with one motor at the hip. With knees, each leg becomes a 20 px thigh and a 20 px shin joined by a knee. The knee bends only one way (0 to 90°, the foot folds forward under the body, like Boston Dynamics' Spot) and has its own motor.
 
 Total leg length and mass stay the same, so standing height doesn't change. The knee motor is half as strong as the hip motor. This follows Sims' rule that a joint's strength scales with the thickness of the parts it joins: the hip joins a 20 px thick torso, while the knee joins two 10 px parts.
 
