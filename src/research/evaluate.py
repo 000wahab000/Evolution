@@ -19,6 +19,12 @@ SPAWN_X = 400.0
 SPLITS = ("train", "validation", "test", "control", "train_eval")
 SHAPES = {"w1": (16, 15), "b1": (16,), "w2": (4, 16), "b2": (4,)}
 DIM = sum(int(np.prod(s)) for s in SHAPES.values())  # 324
+KNEE_SHAPES = {"w1": (16, 23), "b1": (16,), "w2": (8, 16), "b2": (8,)}
+KNEE_DIM = sum(int(np.prod(s)) for s in KNEE_SHAPES.values())  # 520
+
+
+def dim(cfg):
+    return KNEE_DIM if cfg.knees else DIM
 
 
 def to_flat(state_dict):
@@ -27,7 +33,7 @@ def to_flat(state_dict):
 
 def from_flat(vec):
     out, i = {}, 0
-    for k, shape in SHAPES.items():
+    for k, shape in (KNEE_SHAPES if len(vec) == KNEE_DIM else SHAPES).items():
         n = int(np.prod(shape))
         out[k] = np.asarray(vec[i:i + n], dtype=np.float32).reshape(shape)
         i += n
@@ -88,7 +94,7 @@ def shuffle_perm(cfg):
 def make_env(cfg, scenario, substeps=1):
     return CreatureEnv(terrain=scenario.terrain.scaled_friction(scenario.friction_scale),
                        cpg_mode=cfg.brain_input, cpg_rng=make_rng(scenario.cpg_seed, "cpg"),
-                       cpg_perm=shuffle_perm(cfg), substeps=substeps)
+                       cpg_perm=shuffle_perm(cfg), substeps=substeps, knees=cfg.knees)
 
 
 def rollout(params, cfg, scenario, substeps=1, record=False):

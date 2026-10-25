@@ -31,11 +31,13 @@ def run_episode(env, brain, max_steps=600, pose_noise=None, on_step=None):
 
 class CreatureEnv:
     def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1,
-                 cpg_perm=None):
+                 cpg_perm=None, knees=False):
         """terrain: TerrainSpec (default: the legacy course). cpg_mode replaces state[13:15]:
         cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (the 30-step table read
         through cpg_perm, a fixed permutation chosen once per run). substeps>1 splits each step
-        into that many physics steps of 3/60/substeps; all step counters still count brain steps."""
+        into that many physics steps of 3/60/substeps; all step counters still count brain steps.
+        knees: each leg is thigh + shin with a one-way knee (8 motors, state grows by 8;
+        a positive knee action swings the foot backward)."""
         if cpg_mode not in CPG_MODES:
             raise ValueError(f"cpg_mode must be one of {CPG_MODES}")
         if cpg_mode == "noise" and cpg_rng is None:
@@ -48,6 +50,7 @@ class CreatureEnv:
         self.cpg_rng = cpg_rng
         self.cpg_perm = list(cpg_perm) if cpg_mode == "shuffled" else None
         self.substeps = int(substeps)
+        self.knees = bool(knees)
         self.space = pymunk.Space()
         self.space.gravity = (0, 900)
         self.create_ground()
@@ -82,6 +85,9 @@ class CreatureEnv:
             (18, height / 2),
             (22, height / 2)]
         self.leg_length = leg_length
+        if self.knees:
+            self.create_kneed_legs(leg_mass=1, leg_width=10, seg=20)
+            return
         for anchor in self.anchors:
             leg = pymunk.Body(leg_mass, leg_moment)
             leg.position = (
@@ -102,6 +108,43 @@ class CreatureEnv:
             self.joints.append(pivot)
             self.motors.append(motor)
 
+    def create_kneed_legs(self, leg_mass, leg_width, seg):
+        self.seg_length = seg
+        self.shins = []
+        self.shin_shapes = []
+        knee_motors = []
+        moment = pymunk.moment_for_box(leg_mass, (leg_width, seg))
+        for anchor in self.anchors:
+            bodies = []
+            for k in range(2):
+                b = pymunk.Body(leg_mass, moment)
+                b.position = (
+                    self.torso.position.x + anchor[0],
+                    self.torso.position.y + anchor[1] + seg / 2 + k * seg,
+                )
+                shape = pymunk.Poly.create_box(b, (leg_width, seg))
+                shape.friction = 1.2
+                shape.filter = pymunk.ShapeFilter(group=1)
+                self.space.add(b, shape)
+                bodies.append(b)
+                (self.leg_shapes if k == 0 else self.shin_shapes).append(shape)
+            thigh, shin = bodies
+            self.legs.append(thigh)
+            self.shins.append(shin)
+            pivot = pymunk.PivotJoint(self.torso, thigh, anchor, (0, -seg / 2))
+            limit = pymunk.RotaryLimitJoint(self.torso, thigh, -np.pi / 3, np.pi / 3)
+            motor = pymunk.SimpleMotor(self.torso, thigh, 0)
+            motor.max_force = 150000
+            knee = pymunk.PivotJoint(thigh, shin, (0, seg / 2), (0, -seg / 2))
+            knee_limit = pymunk.RotaryLimitJoint(thigh, shin, -np.pi / 2, 0)
+            knee_motor = pymunk.SimpleMotor(thigh, shin, 0)
+            knee_motor.max_force = 75000
+            self.space.add(pivot, limit, motor, knee, knee_limit, knee_motor)
+            self.joints.append(pivot)
+            self.motors.append(motor)
+            knee_motors.append(knee_motor)
+        self.motors.extend(knee_motors)
+
     def reset(self, pose_noise=None):
         """pose_noise: optional 4 leg angles (rad) applied by rotating each leg about its pivot."""
         self.torso.position = (400, 450)
@@ -121,6 +164,17 @@ class CreatureEnv:
                 leg.angle = th
             leg.velocity = (0.0, 0.0)
             leg.angular_velocity = 0.0
+        if self.knees:
+            h = self.seg_length / 2
+            for i, (leg, shin, anchor) in enumerate(zip(self.legs, self.shins, self.anchors)):
+                th = float(pose_noise[i]) if pose_noise is not None else 0.0
+                s_, c_ = math.sin(th), math.cos(th)
+                leg.position = (400 + anchor[0] - h * s_, 450 + anchor[1] + h * c_)
+                shin.position = (400 + anchor[0] - 3 * h * s_, 450 + anchor[1] + 3 * h * c_)
+                leg.angle = shin.angle = th
+                for b in (leg, shin):
+                    b.velocity = (0.0, 0.0)
+                    b.angular_velocity = 0.0
         for motor in self.motors:
             motor.rate = 0.0
         self.steps = 0
@@ -128,8 +182,8 @@ class CreatureEnv:
         return self.get_state()
 
     def step(self, actions):
-        for motor, action in zip(self.motors, actions):
-            motor.rate = float(action) * 10.0
+        for i, (motor, action) in enumerate(zip(self.motors, actions)):
+            motor.rate = float(action) * (-10.0 if self.knees and i >= 4 else 10.0)
 
         old_x = self.torso.position.x
         for _ in range(self.substeps):
@@ -181,7 +235,7 @@ class CreatureEnv:
             cpg_sin, cpg_cos = CPG_CLOCK[self.cpg_perm[self.steps % 30]]
         legs = self.legs
 
-        return np.array([
+        values = [
             torso_angle,
             self.torso.angular_velocity * 0.1,
             self.torso.velocity.x * 0.01,
@@ -197,7 +251,11 @@ class CreatureEnv:
             legs[3].angular_velocity * 0.1,
             cpg_sin,
             cpg_cos,
-        ], dtype=np.float32)
+        ]
+        if self.knees:
+            for leg, shin in zip(legs, self.shins):
+                values += [shin.angle - leg.angle, shin.angular_velocity * 0.1]
+        return np.array(values, dtype=np.float32)
 
     def get_render_state(self):
         """Returns coordinate dictionary for lightweight browser HTML5 canvas rendering."""

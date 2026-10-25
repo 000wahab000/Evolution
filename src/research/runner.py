@@ -15,8 +15,8 @@ import numpy as np
 
 from src.research.config import SCHEMA_VERSION, ExperimentConfig, make_rng
 from src.research.evaluate import (
-    DIM,
     EpisodeCounter,
+    dim,
     evaluate_genome,
     fixed_scenarios,
     from_flat,
@@ -77,7 +77,7 @@ def run_one(cfg, out_root="results"):
     write_json(os.path.join(d, "config.json"), cfg.to_dict())
     started, t0 = utc_now(), time.time()
 
-    opt = make_optimizer(cfg.optimizer, DIM, cfg.optimizer_params, make_rng(cfg.seed, "optimizer"))
+    opt = make_optimizer(cfg.optimizer, dim(cfg), cfg.optimizer_params, make_rng(cfg.seed, "optimizer"))
     train_rng = make_rng(cfg.seed, "train")
     val, test, control, train_eval = (fixed_scenarios(cfg, s)
                                       for s in ("validation", "test", "control", "train_eval"))

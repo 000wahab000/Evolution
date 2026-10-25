@@ -22,6 +22,7 @@ class RunConfig:
     optimizer: str = "ga"
     optimizer_params: dict = field(default_factory=dict)
     brain_input: str = "cpg"
+    knees: bool = False
     episodes_budget: int = 25000
     rollouts_k: int = 5
     max_steps: int = 600
@@ -45,7 +46,10 @@ class RunConfig:
         return {"schema_version": SCHEMA_VERSION, **asdict(self)}
 
     def sha256(self):
-        return config_sha256(asdict(self))
+        d = asdict(self)
+        if not d["knees"]:
+            del d["knees"]  # keeps every pre-knees run hash unchanged
+        return config_sha256(d)
 
 
 RUN_FIELDS = {f.name for f in fields(RunConfig)} - {"experiment", "variant", "seed"}

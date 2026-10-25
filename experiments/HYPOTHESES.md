@@ -19,6 +19,13 @@ prints that tag. Results are reported whether they confirm or refute these hypot
   reported as inconclusive.
 - **H5:** every optimizer (ga, cmaes, openai_es) beats random search (sanity floor). Tested as H5a-c.
 
+**Experiment 3, knees** (`experiments/exp3_knees.json`, optimizer `ga`):
+- **H6:** Kneed walkers reach a higher held-out test distance IQM than straight-legged walkers at an equal episode budget.
+- **H7:** Kneed walkers fall less often on held-out test courses than straight-legged walkers.
+- The kneed genome has 520 weights vs 324. If the kneed validation curve is still rising over the last 20% of
+  the budget, H6/H7 are reported as inconclusive rather than refuted. Knee strength may only be tuned before
+  the full run, using train/validation splits only.
+
 ## Confirmatory contrasts
 
 | Id | A | B | Metric (per seed) | Predicted |
@@ -28,13 +35,15 @@ prints that tag. Results are reported whether they confirm or refute these hypot
 | H3 | cpg | noise | test distance (M1) | A > B |
 | H4 | cmaes | ga | test distance (M1) | A > B |
 | H5a-c | ga, cmaes, openai_es | random_search | test distance (M1) | A > B |
+| H6 | knees | straight | test distance (M1) | A > B |
+| H7 | knees | straight | fall rate (M2) | A < B |
 
 All other pairs are **exploratory** and are labelled as such in REPORT.md.
 
 ## Analysis rules
 
 - **Tests:** two-sided Mann-Whitney U per contrast. Holm correction is applied only within each
-  experiment's confirmatory set (exp1: H1-H3; exp2: H4, H5a-c), alpha = 0.05.
+  experiment's confirmatory set (exp1: H1-H3; exp2: H4, H5a-c; exp3: H6, H7), alpha = 0.05.
 - **Verdict:** *supported* if the Holm-adjusted p < 0.05 **and** the 95% bootstrap CI (10,000
   resamples) of the IQM difference A − B excludes 0 in the predicted direction. *Not supported* if
   both hold in the opposite direction. Otherwise *inconclusive*.
