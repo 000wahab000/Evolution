@@ -9,6 +9,7 @@
   "rollouts_k": 5,
   "eval_every_episodes": 1250,
   "fall_rule": "penalty",
+  "guards": true,
   "variants": {
     "straight": {},
     "knees": {

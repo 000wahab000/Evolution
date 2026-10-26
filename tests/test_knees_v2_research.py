@@ -11,7 +11,7 @@ from tests.test_runner_smoke import TINY
 def test_default_hash_ignores_new_fields():
     cfg = RunConfig("e", "v", 0)
     d = asdict(cfg)
-    del d["knees"], d["fall_rule"]
+    del d["knees"], d["fall_rule"], d["guards"]
     assert cfg.sha256() == config_sha256(d)
 
 

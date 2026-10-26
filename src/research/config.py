@@ -24,6 +24,7 @@ class RunConfig:
     brain_input: str = "cpg"
     knees: bool | str = False  # False, True or "spot"
     fall_rule: str = "touch"
+    guards: bool = False
     episodes_budget: int = 25000
     rollouts_k: int = 5
     max_steps: int = 600
@@ -52,6 +53,8 @@ class RunConfig:
             del d["knees"]  # keeps every pre-knees run hash unchanged
         if d["fall_rule"] == "touch":
             del d["fall_rule"]
+        if not d["guards"]:
+            del d["guards"]
         return config_sha256(d)
 
 

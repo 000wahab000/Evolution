@@ -11,6 +11,21 @@ CPG_CLOCK = tuple(
 )
 CPG_MODES = ("cpg", "zeros", "noise", "shuffled")
 
+# guards=True thresholds. Measured on the pilot4_knees_v2 champions replayed on test courses
+# 5000-5009 (all bodies: torso, thighs, shins), normal walking only (straight, plain knees p99,
+# Spot before step 530): max body speed 407 px/s (straight; knees p99 381) and max |angular
+# velocity| 13.0 rad/s (straight/Spot; knees p99 19.2). Each is set at ~3x the normal max.
+# For comparison the Spot blow-up reaches |w| 15 on the torso and hip angles of 900 deg.
+SANE_MAX_SPEED = 1250.0  # px/s, ~3 x 407
+SANE_MAX_OMEGA = 60.0  # rad/s, ~3 x 19.2
+# Progress-based stuck rule (guards only): stuck if the torso advanced < STUCK_MIN_PROGRESS px
+# over the last STUCK_WINDOW steps. The Spot champion shuffles 179 px in 530 steps (~0.34
+# px/step, ~50 px per 150 steps, never less than 34 px per 120), so 60 px / 150 steps cuts it
+# at about step 150. A walker has to average only 0.4 px/step; the straight and plain-knee
+# champions cover 3-5 px/step.
+STUCK_WINDOW = 150
+STUCK_MIN_PROGRESS = 60.0
+
 
 def run_episode(env, brain, max_steps=600, pose_noise=None, on_step=None):
     """The one rollout loop: returns (training return incl. -100 on fall, steps, fallen).
@@ -31,7 +46,7 @@ def run_episode(env, brain, max_steps=600, pose_noise=None, on_step=None):
 
 class CreatureEnv:
     def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1,
-                 cpg_perm=None, knees=False, fall_rule="touch"):
+                 cpg_perm=None, knees=False, fall_rule="touch", guards=False):
         """terrain: TerrainSpec (default: the legacy course). cpg_mode replaces state[13:15]:
         cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (the 30-step table read
         through cpg_perm, a fixed permutation chosen once per run). substeps>1 splits each step
@@ -39,7 +54,10 @@ class CreatureEnv:
         knees: each leg is thigh + shin with a one-way knee (8 motors, state grows by 8;
         knee action -1 bends the knee (foot moves forward of the knee), +1 straightens it). knees="spot": Spot-like knees (limit
         14-150 deg, bent 30 deg at reset, hips +-90 deg). fall_rule: "touch" (torso on the ground
-        ends the episode) or "penalty" (reward -2 per touching step, no fall for touching)."""
+        ends the episode) or "penalty" (reward -2 per touching step, no fall for touching).
+        guards: opt-in physics guards. Hips are clamped like knees, an episode whose bodies move
+        absurdly fast ends as `invalid` (no penalty, the triggering step earns nothing, distance
+        frozen at the last sane position, see score_x), and the stuck rule becomes progress based."""
         if knees not in (False, True, "spot"):
             raise ValueError("knees must be False, True or 'spot'")
         if fall_rule not in ("touch", "penalty"):
@@ -59,6 +77,9 @@ class CreatureEnv:
         self.knees = bool(knees)
         self.spot = knees == "spot"
         self.fall_rule = fall_rule
+        self.guards = bool(guards)
+        self.invalid = False
+        self.last_sane_x = 400.0
         self.space = pymunk.Space()
         self.space.gravity = (0, 900)
         self.create_ground()
@@ -155,23 +176,49 @@ class CreatureEnv:
             knee_motors.append(knee_motor)
         self.motors.extend(knee_motors)
 
+    @staticmethod
+    def _clamp_joint(parent, child, pivot, lo, hi):
+        """If child's angle relative to parent is outside [lo, hi], rotate child back to the
+        limit about the world point `pivot` and drop its outward relative spin."""
+        rel = child.angle - parent.angle
+        if lo <= rel <= hi:
+            return
+        d = (lo if rel < lo else hi) - rel
+        c, s_ = math.cos(d), math.sin(d)
+        off = child.position - pivot
+        child.position = (pivot.x + c * off.x - s_ * off.y, pivot.y + s_ * off.x + c * off.y)
+        child.angle += d
+        if (child.angular_velocity - parent.angular_velocity) * d < 0:
+            child.angular_velocity = parent.angular_velocity
+
     def clamp_knees(self):
         """The limit joint only reacts after a knee is already past its limit and the motor
         overpowers it (116-128 deg seen on a 90 deg limit). After each physics step, rotate any
         out-of-range shin back about its knee pivot and drop its outward relative spin."""
         lo, hi = self.knee_range
         for thigh, shin in zip(self.legs, self.shins):
-            rel = shin.angle - thigh.angle
-            if lo <= rel <= hi:
-                continue
-            d = (lo if rel < lo else hi) - rel
-            knee = thigh.local_to_world((0, self.seg_length / 2))
-            c, s_ = math.cos(d), math.sin(d)
-            off = shin.position - knee
-            shin.position = (knee.x + c * off.x - s_ * off.y, knee.y + s_ * off.x + c * off.y)
-            shin.angle += d
-            if (shin.angular_velocity - thigh.angular_velocity) * d < 0:
-                shin.angular_velocity = thigh.angular_velocity
+            self._clamp_joint(thigh, shin, thigh.local_to_world((0, self.seg_length / 2)), lo, hi)
+
+    def clamp_hips(self):
+        """Same fix for the soft hip RotaryLimitJoint (hips reached -114..+194 deg on +-60)."""
+        hip = math.pi / 2 if self.spot else math.pi / 3
+        for leg, anchor in zip(self.legs, self.anchors):
+            self._clamp_joint(self.torso, leg, self.torso.local_to_world(anchor), -hip, hip)
+
+    @property
+    def score_x(self):
+        """Torso x used for distance: with guards, frozen at the last sane step."""
+        return self.last_sane_x if self.guards else self.torso.position.x
+
+    def physics_insane(self):
+        bodies = [self.torso, *self.legs, *getattr(self, "shins", [])]
+        for b in bodies:
+            v, w = b.velocity, b.angular_velocity
+            if not (math.isfinite(v.x) and math.isfinite(v.y) and math.isfinite(w)):
+                return True
+            if v.length > SANE_MAX_SPEED or abs(w) > SANE_MAX_OMEGA:
+                return True
+        return False
 
     def reset(self, pose_noise=None):
         """pose_noise: optional 4 leg angles (rad) applied by rotating each leg about its pivot."""
@@ -215,6 +262,9 @@ class CreatureEnv:
             motor.rate = 0.0
         self.steps = 0
         self.still_steps = 0
+        self.invalid = False
+        self.last_sane_x = float(self.torso.position.x)
+        self.x_hist = [self.last_sane_x]
         return self.get_state()
 
     def step(self, actions):
@@ -226,7 +276,14 @@ class CreatureEnv:
             self.space.step(3 / 60.0 / self.substeps)
             if self.knees:
                 self.clamp_knees()
+            if self.guards:
+                self.clamp_hips()
         self.steps += 1
+        if self.guards and self.physics_insane():
+            self.invalid = True
+            return self.get_state(), 0.0, True, False
+        self.last_sane_x = float(self.torso.position.x)
+        self.x_hist.append(self.last_sane_x)
         state = self.get_state()
         displacement = self.torso.position.x - old_x
         reward = displacement * 2
@@ -248,7 +305,9 @@ class CreatureEnv:
             reward -= energy_cost * 0.05 / 60.0
         if self.fitness_mode in ["ground_termination", "touch_ground"] and body_touched_ground:
             reward -= 100.0
-        if abs(self.torso.velocity.x) < 2.0 and self.steps > 45:
+        if self.guards:
+            pass  # no stillness penalty; the stuck rule below is progress based
+        elif abs(self.torso.velocity.x) < 2.0 and self.steps > 45:
             self.still_steps += 1
             reward -= 0.1
         else:
@@ -261,7 +320,11 @@ class CreatureEnv:
             fallen = body_touched_ground or abs(torso_angle) > 1.2 or self.torso.position.y > deep
         else:
             fallen = abs(torso_angle) > 1.2 or self.torso.position.y > deep or body_touched_ground
-        stuck = self.still_steps > 60
+        if self.guards:
+            stuck = (len(self.x_hist) > STUCK_WINDOW
+                     and self.x_hist[-1] - self.x_hist[-1 - STUCK_WINDOW] < STUCK_MIN_PROGRESS)
+        else:
+            stuck = self.still_steps > 60
         done = self.steps > 600 or fallen or stuck
         return state, reward, done, fallen
 

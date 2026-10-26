@@ -444,3 +444,77 @@ The first draft of this file left the items below unverified. The ones marked **
 - **Still unverifiable: diagnostic numbers** (tilt 0.07–0.78 rad, knees at 116–128°, ~28–30° leak per step). They came from a diagnostic run on kneed seeds 0, 1 and 4 during the step-1 work session. That script can't be clearly identified in the scratchpad now. They should be regenerated with a committed script before the blog is published; until then, treat them as unverified.
 - **Still unverified: the contents of the scratchpad scripts.** The file names exist, but they weren't re-read for this document.
 - **Not run for this document: the test suite.** It was last run during step 2 (117 passed); rerun it with `python -m pytest -q`.
+
+## Step 2b: physics guards (uncommitted)
+
+All of this sits behind one opt-in flag, `guards` (default `False`). With it off, the env produces byte-identical states (tested) and run hashes do not change.
+
+### Why
+
+A diagnostic on the `pilot4_knees_v2` champions found three problems:
+
+- **Spot glitch.** The `knees_spot` champion (seed 100) stands almost still for 530 steps with all four feet down and its knees pressed against the 14 degree limit. At steps 531-533 the physics blows up: torso angular velocity reaches -9.7, hips read +341/-404 degrees, and the body is launched about 380 px.
+- **Hip limits leak.** Plain knees hips reached -114..+194 degrees against a +-60 degree limit. Hips use a soft `RotaryLimitJoint`, and only knees had `clamp_knees()`.
+- **Stuck rule never fires.** The Spot champion moved 179 px in 530 steps, but the stuck rule needs |vx| < 2 px/s, so slow shuffling never counts.
+
+### What changed, file by file
+
+`src/environment.py`
+- `CreatureEnv(..., guards=False)`.
+- The clamp was generalised into one helper. `clamp_knees()` now calls it, and `clamp_hips()` is new (limit +-90 degrees for spot, +-60 otherwise, pivot on the torso anchor). Hips are clamped after every substep when `guards` is on.
+
+```python
+def _clamp_joint(parent, child, pivot, lo, hi): ...   # was the body of clamp_knees
+def clamp_hips(self):
+    hip = math.pi / 2 if self.spot else math.pi / 3
+    for leg, anchor in zip(self.legs, self.anchors):
+        self._clamp_joint(self.torso, leg, self.torso.local_to_world(anchor), -hip, hip)
+```
+
+- Sanity cutoff: after the substeps, if any body (torso, thighs, shins) has speed > `SANE_MAX_SPEED` or |angular velocity| > `SANE_MAX_OMEGA` (or is non-finite), the step returns `(state, 0.0, True, False)` and sets `env.invalid = True`. No -100 (that is only applied for `fallen`), and the triggering step earns no reward.
+- Distance freeze: `env.score_x` returns `last_sane_x` (updated after every sane step) when guards are on, otherwise the torso x.
+- Stuck rule with guards: `x_hist[-1] - x_hist[-1 - STUCK_WINDOW] < STUCK_MIN_PROGRESS`. The stillness penalty is off with guards. Without guards both old rules are untouched.
+
+`src/research/config.py`: `RunConfig.guards: bool = False`; deleted from the dict in `sha256()` when false. It is in `RUN_FIELDS`, so it can be set at top level of an experiment JSON.
+
+`src/research/evaluate.py`: `make_env` passes `guards=cfg.guards`. `rollout` measures distance from `env.score_x` and, with guards, adds `out["invalid"]`. `summarize` adds an `invalids` count only when any rollout has the key. `analysis.py` is not yet taught to report it.
+
+`tests/test_guards.py` (new, 13 tests). `tests/test_knees_research.py` and `tests/test_knees_v2_research.py`: the hash-mirror tests also `del d["guards"]` (the hash itself is unchanged).
+
+`experiments/pilot4b_knees_v2_guards.json` (new): `pilot4_knees_v2` plus top-level `"guards": true`, so every variant gets it. `experiments/exp4_knees_v2.json`: `"guards": true` added at top level.
+
+### Thresholds and how they were chosen
+
+Replayed all six pilot champions (seeds 100/101) on test courses 5000-5009, measured over all bodies.
+
+| Constant | Value | Normal-walking max | Basis |
+|---|---|---|---|
+| `SANE_MAX_SPEED` | 1250 px/s | 407 (straight); knees p99 381 | ~3x |
+| `SANE_MAX_OMEGA` | 60 rad/s | 13.0 (straight, Spot before 530); knees p99 19.2 | ~3x the knees p99 |
+| `STUCK_WINDOW` / `STUCK_MIN_PROGRESS` | 150 steps / 60 px | Spot shuffle ~50 px per 150 steps (min 34 px per 120) | Spot is cut at step 150 |
+
+The raw plain-knees maxima (1840 px/s, 168 rad/s) are themselves blow-ups caused by the leaking hips, so p99 was used for knees. The stuck values follow from the Spot rate of ~0.34 px/step; a walker only needs 0.4 px/step to pass, and the straight and knees champions cover 3-5 px/step.
+
+### Root cause of the Spot blow-up (standalone replay, course 5000, stop at step 535)
+
+| Variant | Result |
+|---|---|
+| baseline | blows up (max torso \|w\| 15.3, hips to 924 degrees) |
+| (a) `clamp_knees` disabled | **no blow-up** (max \|w\| 0.23, hips 21 degrees); creature just stands (x=52) |
+| (b) hips also clamped | **still blows up** (max \|w\| 24.8, hips held to 90 degrees, torso angle 0.98) |
+| (c) substeps doubled | worse: blows up and falls by step 418 |
+
+So the hip clamp is not the fix. The knee clamp is what triggers the blow-up here: with the knees pressed on the 14 degree limit, the per-substep position teleport appears to inject energy against the ground contacts. The sanity cutoff is therefore the actual protection for this failure, not just a backstop. I did not test why the knee clamp misbehaves (for example velocity-only correction), so that stays open.
+
+### Checks run
+
+- Full suite: 130 passed, 0 failed (pinned to 4 cores, Idle).
+- Old champions replayed with guards on (test courses 5000-5009): Spot ends as stuck at step 150 on all 10 courses (before: 541-542 steps); no invalids for Spot. Straight/knees champions get much shorter episodes with guards (for example knees seed 100 falls at step 75), because they were trained with leaking hips and now cannot use it. This is expected, and is what the retraining comparison is for.
+
+### Still unverified
+
+- No retraining has been done with guards; `pilot4b` has not been run. Whether guards cost or help trained performance is unknown.
+- The thresholds come from only 6 champions that were trained without guards. Walkers trained under guards may move differently, so SANE and STUCK values could need revisiting.
+- The stuck rule's effect was not isolated from the hip clamp on the old straight/knees champions.
+- The root cause of why the knee clamp blows up Spot against the ground is not established.
+- `analysis.py` does not report `invalids` yet.

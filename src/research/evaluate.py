@@ -95,7 +95,7 @@ def make_env(cfg, scenario, substeps=1):
     return CreatureEnv(terrain=scenario.terrain.scaled_friction(scenario.friction_scale),
                        cpg_mode=cfg.brain_input, cpg_rng=make_rng(scenario.cpg_seed, "cpg"),
                        cpg_perm=shuffle_perm(cfg), substeps=substeps, knees=cfg.knees,
-                       fall_rule=cfg.fall_rule)
+                       fall_rule=cfg.fall_rule, guards=cfg.guards)
 
 
 def rollout(params, cfg, scenario, substeps=1, record=False):
@@ -111,9 +111,11 @@ def rollout(params, cfg, scenario, substeps=1, record=False):
             legs.append([leg.angle - env.torso.angle for leg in env.legs])
 
     ret, steps, fallen = run_episode(env, brain, cfg.max_steps, scenario.pose_noise, on_step)
-    distance = float(env.torso.position.x - SPAWN_X)
+    distance = float(env.score_x - SPAWN_X)
     out = {"distance": distance, "fell": bool(fallen), "steps": steps, "energy": energy[0],
            "cot": energy[0] / distance if distance > 0 else float("nan"), "return": ret}
+    if cfg.guards:
+        out["invalid"] = bool(env.invalid)
     if record:
         out["leg_angles"] = np.array(legs)
     return out
@@ -131,7 +133,10 @@ def evaluate_genome(params, cfg, scenarios, counter=None, substeps=1):
 def summarize(rolls):
     """M1 distance, M2 fall rate, M3 cost of transport (NaN-safe mean over distance > 0)."""
     cots = [r["cot"] for r in rolls if r["distance"] > 0]
-    return {"distance": float(np.mean([r["distance"] for r in rolls])),
-            "fall_rate": float(np.mean([r["fell"] for r in rolls])),
-            "falls": int(sum(r["fell"] for r in rolls)), "episodes": len(rolls),
-            "cot": float(np.mean(cots)) if cots else float("nan")}
+    out = {"distance": float(np.mean([r["distance"] for r in rolls])),
+           "fall_rate": float(np.mean([r["fell"] for r in rolls])),
+           "falls": int(sum(r["fell"] for r in rolls)), "episodes": len(rolls),
+           "cot": float(np.mean(cots)) if cots else float("nan")}
+    if any("invalid" in r for r in rolls):  # guards only: episodes ended by the physics sanity cutoff
+        out["invalids"] = int(sum(r.get("invalid", False) for r in rolls))
+    return out
