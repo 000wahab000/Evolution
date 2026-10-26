@@ -1,0 +1,36 @@
+{
+  "name": "exp3_knees",
+  "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "optimizer": "ga",
+  "optimizer_params": {
+    "pop_size": 50
+  },
+  "episodes_budget": 25000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 1250,
+  "variants": {
+    "straight": {},
+    "knees": {
+      "knees": true
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H6",
+      "a": "knees",
+      "b": "straight",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "Kneed walkers reach a higher held-out test distance IQM than straight-legged walkers at an equal episode budget."
+    },
+    {
+      "id": "H7",
+      "a": "knees",
+      "b": "straight",
+      "metric": "fall_rate",
+      "direction": "less",
+      "text": "Kneed walkers fall less often on held-out test courses than straight-legged walkers."
+    }
+  ],
+  "hypotheses_tag": ""
+}
