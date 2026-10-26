@@ -590,8 +590,11 @@
             <button class="btn active" data-model="best" aria-pressed="true" onclick="switchModel('best')">Session Best</button>
             <button class="btn" data-model="universal" aria-pressed="false" onclick="switchModel('universal')">Universal Best</button>
             <button class="btn" data-model="random" aria-pressed="false" onclick="switchModel('random')">Random (Untrained)</button>
+            <button class="btn" data-model="knees" aria-pressed="false" onclick="switchModel('knees')">Knees (v2 pilot)</button>
+            <button class="btn" data-model="straight_v2" aria-pressed="false" onclick="switchModel('straight_v2')">Straight legs (v2 pilot)</button>
           </div>
         </div>
+        <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 0.5rem;">Knees and Straight legs: v2 pilot champions, 2 seeds; see the knees research write-up.</p>
 
         <div class="viewport" id="viewport" tabindex="-1">
           <canvas id="simCanvas" role="img" aria-label="2D view of the physics simulation: a quadruped walker (white torso, blue rear legs, green front legs) moving right along the terrain, marked in pixels"></canvas>
@@ -876,7 +879,7 @@
 
     function setLive(on) {
       // The server only streams dashboard models; a watched experiment champion is a replay path
-      if (on && currentModel.includes('/')) switchModel('best');
+      if (on && (currentModel.includes('/') || ['knees', 'straight_v2'].includes(currentModel))) switchModel('best');
       liveMode = on;
       const btn = document.getElementById('btnLive');
       btn.classList.toggle('active', on);
@@ -939,7 +942,10 @@
       const f1 = frames[Math.min(n - 1, i + 1)];
       const k = Math.min(1, t - i);
       const v = j => f0[j] + (f1[j] - f0[j]) * k;
-      return { x: v(0), y: v(1), a: v(2), legs: [0, 1, 2, 3].map(L => [v(3 + 3 * L), v(4 + 3 * L), v(5 + 3 * L)]) };
+      const pose = { x: v(0), y: v(1), a: v(2), legs: [0, 1, 2, 3].map(L => [v(3 + 3 * L), v(4 + 3 * L), v(5 + 3 * L)]) };
+      // Kneed replays append shin columns (x, y, a per leg) after vx
+      if (replay.knees) pose.shins = [0, 1, 2, 3].map(L => [v(20 + 3 * L), v(21 + 3 * L), v(22 + 3 * L)]);
+      return pose;
     }
 
     function showFrameData(data) {
@@ -1066,7 +1072,9 @@
       });
 
       // Back Legs (Solid Blue)
-      pose.legs.slice(0, 2).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, 10, 40, a, '#1d4ed8', '#3b82f6'));
+      const [lw, lh] = pose.shins ? replay.seg : [10, 40];
+      pose.legs.slice(0, 2).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, lw, lh, a, '#1d4ed8', '#3b82f6'));
+      if (pose.shins) pose.shins.slice(0, 2).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, lw, lh, a, '#1e3a8a', '#60a5fa'));
 
       // Torso (Solid White with Crisp Dark Border)
       drawRotatedRect(ctx, pose.x, pose.y, 60, 20, pose.a, '#ffffff', '#e4e4e7');
@@ -1082,7 +1090,8 @@
       ctx.restore();
 
       // Front Legs (Solid Green)
-      pose.legs.slice(2, 4).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, 10, 40, a, '#22c55e', '#16a34a'));
+      pose.legs.slice(2, 4).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, lw, lh, a, '#22c55e', '#16a34a'));
+      if (pose.shins) pose.shins.slice(2, 4).forEach(([x, y, a]) => drawRotatedRect(ctx, x, y, lw, lh, a, '#86efac', '#15803d'));
     }
 
     function drawRotatedRect(c, x, y, width, height, angle, fill, stroke) {
@@ -1140,7 +1149,7 @@
         });
 
         await document.fonts.ready; // labels are drawn with JetBrains Mono
-        three = { THREE, renderer, scene, camera, sun, mat, torso, legs, terrain: null };
+        three = { THREE, renderer, scene, camera, sun, mat, torso, legs, shins: [], terrain: null };
         resizeCanvas();
         btnView.disabled = false;
         setView(true);
@@ -1221,7 +1230,24 @@
         t.legs[i].position.x = x;
         t.legs[i].position.y = -y;
         t.legs[i].rotation.z = -a;
+        t.legs[i].scale.y = pose.shins ? replay.seg[1] / 40 : 1; // thighs are shorter than straight legs
       });
+      t.shins.forEach(m => { m.visible = !!pose.shins; });
+      if (pose.shins) {
+        if (!t.shins.length) { // built on first kneed frame only
+          [0x1e3a8a, 0x1e3a8a, 0x86efac, 0x86efac].forEach((color, i) => {
+            const m = t.legs[i].clone();
+            m.material = t.mat(color);
+            m.scale.y = replay.seg[1] / 40;
+            t.scene.add(m);
+            t.shins.push(m);
+          });
+        }
+        pose.shins.forEach(([x, y, a], i) => {
+          t.shins[i].position.set(x, -y, t.legs[i].position.z);
+          t.shins[i].rotation.z = -a;
+        });
+      }
       // Follow camera at a 3/4 angle: in front of, slightly behind and above the walker
       const d = Math.max(1, 1.5 / t.camera.aspect) / currentZoom; // pull back on narrow (phone) viewports
       const tx = cam.x;

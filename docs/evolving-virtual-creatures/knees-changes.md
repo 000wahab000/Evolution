@@ -518,3 +518,9 @@ So the hip clamp is not the fix. The knee clamp is what triggers the blow-up her
 - The stuck rule's effect was not isolated from the hip clamp on the old straight/knees champions.
 - The root cause of why the knee clamp blows up Spot against the ground is not established.
 - `analysis.py` does not report `invalids` yet.
+
+## Step 2c: dashboard showcase
+
+- `scripts/record_replay.py`: when `env.knees` is set, each frame gets 12 extra columns after `vx` (shin x, y, angle per leg), and the replay gets `"knees": true`, `"seg": [10, 20]` and `"shin_fields"`. Only the 4 hip actions are stored (kneed envs have 8). Straight replays are byte-compatible with the old format. `--champion` already builds the env through `make_env(cfg, ...)`, which passes `knees`, `fall_rule` and `guards` from `config.json`.
+- `web/templates/index.html`: the 2D view draws thighs and shins at the recorded size (shins in a darker blue and lighter green); the 3D view creates shin meshes on the first kneed frame. Two new buttons, "Knees (v2 pilot)" and "Straight legs (v2 pilot)", plus the note "v2 pilot champions, 2 seeds; see the knees research write-up". Live mode falls back to Session Best for these two.
+- New replays from `results/pilot4b_knees_v2_guards/{knees,straight}/seed_101/champion.npz`: `knees.json` (128 KB, 2603 px, 586 steps) and `straight_v2.json` (79 KB, 1345 px, 600 steps).
