@@ -15,11 +15,12 @@ Evolution-1 is a 2D quadruped: a torso with four rigid legs. Its brain is a tiny
 Each step borrows one idea from the paper.
 
 1. Knees: split each leg into thigh + shin with a powered knee (sec. 2–3.3). See [01-knees](./01-knees/).
-2. Foot contact sensors: the brain feels when a foot touches the ground (sec. 3.1).
-3. Score on several courses: average fitness over several random courses so the walker can't memorise one (sec. 5.4).
-4. Settle before scoring: let the body come to rest before measuring distance (sec. 5.2).
-5. Size-scaled mutation: scale each weight's mutation chance by 1/genome size so every child gets about the same number of changes, whatever the brain size (sec. 6.1). Today every weight has a fixed 15% chance, so the 520-weight kneed brain gets about 78 changes per child against about 49 for the 324-weight straight brain.
-6. Dashboard: show the new bodies in the browser.
+2. Knees v2: penalty fall rule, knee-limit fix, Spot-inspired knees (Spot SDK; Sims sec. 5.2). See [02-knees-v2](./02-knees-v2/).
+3. Foot contact sensors: the brain feels when a foot touches the ground (sec. 3.1).
+4. Score on several courses: average fitness over several random courses so the walker can't memorise one (sec. 5.4).
+5. Settle before scoring: let the body come to rest before measuring distance (sec. 5.2).
+6. Size-scaled mutation: scale each weight's mutation chance by 1/genome size so every child gets about the same number of changes, whatever the brain size (sec. 6.1). Today every weight has a fixed 15% chance, so the 520-weight kneed brain gets about 78 changes per child against about 49 for the 324-weight straight brain.
+7. Dashboard: show the new bodies in the browser.
 
 Later ideas: fitness-proportional breeding (sec. 6), and evolving the body shape itself (sec. 2).
 

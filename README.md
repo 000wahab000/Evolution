@@ -32,6 +32,8 @@ The 15 network inputs at each timestep:
 | `leg[0..3].angular_velocity` | Each leg's rotation speed |
 | `cpg_sin, cpg_cos` | Central Pattern Generator clock (30-step rhythm signal) |
 
+With `knees=True` (research runs only) there are 8 more inputs (per knee: shin angle relative to the thigh, shin angular velocity x 0.1) and 4 more outputs (the knee motors), so the network is 23→16→8.
+
 The CPG is a precomputed sine/cosine table that gives the network a sense of rhythmic timing - it can phase-lock its gait to it. Without it, the creature tends to spam all motors at max speed and goes nowhere.
 
 ### Evolution loop
@@ -51,6 +53,24 @@ repeat
 ```
 
 Mutation: per-parameter random mask (rate 0.15) with Gaussian noise (scale 0.35). Crossover: uniform parameter-level mixing (50/50 per weight from each parent).
+
+---
+
+## Research track: Evolving Virtual Creatures
+
+This repo is also applying ideas from Karl Sims' "Evolving Virtual Creatures" (1994), one idea per PR. Each step is documented in `docs/evolving-virtual-creatures/NN-step/` with a plan, abstract and results; the roadmap is in [docs/evolving-virtual-creatures/README.md](docs/evolving-virtual-creatures/README.md).
+
+**Step 1, knees (exp3, done).** Optional thigh+shin legs with powered one-way knees: 23 inputs, 8 outputs, 520 weights.
+- Result: straight 394 px IQM vs knees 160 px on held-out test courses; the knees fell on 100/100 test episodes vs 17/100.
+- The cause was traced to a geometric fall rule plus a leaking soft knee limit.
+- Details: [01-knees/results.md](docs/evolving-virtual-creatures/01-knees/results.md) and the blog draft [docs/blog/01-knees-part-1.v2.md](docs/blog/01-knees-part-1.v2.md).
+
+**Step 2, knees v2 (in progress).**
+- `fall_rule="penalty"` (-2 per step with the torso on the ground, instead of death), knee limits enforced in code, and a Spot-inspired `knees="spot"` variant.
+- Opt-in `guards`: hip clamp, a physics sanity cutoff (those episodes are marked `invalid`), and a progress-based stuck rule.
+- exp4 is planned (`experiments/exp4_knees_v2.json`).
+
+Every code change in steps 1 and 2 is listed in [knees-changes.md](docs/evolving-virtual-creatures/knees-changes.md). Session logs are in [docs/log/](docs/log/).
 
 ---
 
@@ -122,6 +142,12 @@ python scripts/export_dashboard.py results/exp1_cpg                   # dashboar
 ```
 Each run writes `results/<exp>/<variant>/seed_<n>/` and is skipped once it has `DONE`, so an interrupted experiment resumes where it stopped. Hypotheses and the analysis plan are pre-registered in `experiments/HYPOTHESES.md`; tag it before the first full run.
 
+**Training on GitHub Actions** (`.github/workflows/experiment.yml`):
+- Push a branch named `experiment/<config-name>` and it runs `experiments/<config-name>.json` as one job per (variant, seed). `workflow_dispatch` works once the file is on the default branch.
+- A collect job merges the runs, verifies and analyzes them (`--no-replay`), and uploads the artifact `results-<name>`.
+- Download it with `gh run download <id> -n results-<name> -D results/<name>`.
+- Champions trained on Linux CI can replay differently on Windows or macOS (chaotic physics), so run replays on the same platform.
+
 **Docker:**
 ```bash
 docker compose up --build
@@ -168,6 +194,8 @@ The `--fitness-mode` flag changes what penalties get applied during rollout:
 | `ground_termination` | Episode ends immediately on torso contact |
 | `all_penalties` | Tilt + energy penalties combined |
 
+Research runs also take `fall_rule` (`touch` default / `penalty`) and `guards` in `RunConfig`; see `src/research/config.py`.
+
 ---
 
 ## Project layout
@@ -178,7 +206,7 @@ app.py             - Flask web dashboard; this is what Render runs
 src/
   environment.py   - Pymunk physics world, creature construction, reward logic
   evolution.py     - Population class, crossover, mutation, rollout dispatch
-  model.py         - CreatureBrain (15→16→4 tanh network)
+  model.py         - CreatureBrain (15→16→4 tanh network, or 23→16→8 with knees)
   terrain.py       - Course builders (legacy, fixed, seeded random)
   gym_env.py       - Gymnasium wrapper (Evolution1-Quadruped-v0)
   research/        - Seeded experiments: optimizers, evaluation, stats, figures
@@ -191,6 +219,10 @@ notebooks/         - playground.ipynb (Colab or local)
 scripts/           - record_replay.py, run_experiment.py, analyze.py, plot_logs.py, ...
 docs/              - Study guide (LEARNING.md), strategy, plans, research notes, media
 tests/             - pytest suite
+docs/evolving-virtual-creatures/ - Sims-paper track: roadmap, per-step docs, knees-changes.md
+docs/blog/         - Blog drafts and images
+docs/log/          - Session logs
+.github/workflows/experiment.yml - Experiments on GitHub Actions
 Dockerfile, compose.yaml - Container build (Render) and local docker compose
 ```
 
@@ -203,6 +235,7 @@ Dockerfile, compose.yaml - Container build (Render) and local docker compose
 | v1 - Straight-line walking | Done | Pymunk physics, CPG timing, GA baseline |
 | v2 - Multi-core + web dashboard | Done | Parallel rollouts, SSE browser streaming, Docker |
 | v3 - Procedural terrain | In progress | Continuously linked slope segments with progressive difficulty |
+| Sims-paper track (knees, contact sensors, multi-course scoring, ...) | In progress | see docs/evolving-virtual-creatures/README.md |
 | v4 - Horse + rider | Planned | Extended morphology, rider balance constraints |
 | v5 - Vision | Planned | Directional sensors for the rider |
 | v6 - Multi-agent battles | Planned | Competitive co-evolution, combat physics |

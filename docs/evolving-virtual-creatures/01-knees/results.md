@@ -102,6 +102,7 @@ F8. Speed against energy.
 - 10 seeds per variant.
 - Knee strength was not tuned. It stayed at the pre-registered 75,000.
 - All knees bend the same way.
+- Knee limits leaked: the knee motor could push a knee up to ~30° past either stop within a single physics step, so step-1 knees could bend to ~120° and over-straighten. Fixed in step 2 (knees v2); step-1 kneed results include this bug.
 
 ## What's next
 

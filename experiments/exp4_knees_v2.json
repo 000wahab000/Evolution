@@ -1,0 +1,41 @@
+{
+  "name": "exp4_knees_v2",
+  "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "optimizer": "ga",
+  "optimizer_params": {
+    "pop_size": 50
+  },
+  "episodes_budget": 25000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 1250,
+  "fall_rule": "penalty",
+  "guards": true,
+  "variants": {
+    "straight": {},
+    "knees": {
+      "knees": true
+    },
+    "knees_spot": {
+      "knees": "spot"
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H8",
+      "a": "knees",
+      "b": "straight",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "Under the penalty fall rule, kneed walkers reach a higher held-out test distance IQM than straight-legged walkers."
+    },
+    {
+      "id": "H9",
+      "a": "knees_spot",
+      "b": "knees",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "Spot-like kneed walkers reach a higher held-out test distance IQM than plain kneed walkers."
+    }
+  ],
+  "hypotheses_tag": ""
+}
