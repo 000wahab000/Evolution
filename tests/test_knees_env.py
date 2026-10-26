@@ -20,15 +20,18 @@ def test_kneed_reset_shape():
     assert all(state[i] == 0 for i in (15, 17, 19, 21))
 
 
-def test_positive_knee_action_swings_foot_backward():
-    env = CreatureEnv(knees=True)
-    env.reset()
-    for _ in range(30):
-        state, *_ = env.step([0, 0, 0, 0, 1, 1, 1, 1])
-    for i, (thigh, shin) in enumerate(zip(env.legs, env.shins)):
-        rel = abs(state[15 + 2 * i])
-        assert 0 < rel <= math.pi / 2 + 0.05
-        assert shin.local_to_world((0, 10)).x < thigh.local_to_world((0, 10)).x
+def test_negative_knee_action_bends_knee():
+    for action, bent in ((-1, True), (1, False)):
+        env = CreatureEnv(knees=True)
+        env.reset()
+        for _ in range(30):
+            state, *_ = env.step([0, 0, 0, 0, action, action, action, action])
+        for i in range(4):
+            rel = state[15 + 2 * i]
+            if bent:
+                assert -math.pi / 2 - 0.09 <= rel <= -0.3
+            else:
+                assert abs(rel) <= 0.2  # one leg jitters to ~0.155 mid-stride
 
 
 def test_kneed_zero_actions_stand():

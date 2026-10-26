@@ -1,0 +1,20 @@
+{
+  "name": "pilot4b_knees_v2_guards",
+  "_note": "Same as pilot4_knees_v2 plus guards=true (hip clamp, physics sanity cutoff, progress stuck rule). Pilot for exp4: tune knee settings here only. Own test courses (5000+) so exp4's test set (1000-1009) stays unseen.",
+  "seeds": [100, 101],
+  "optimizer": "ga",
+  "optimizer_params": {"pop_size": 100},
+  "episodes_budget": 30000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 3000,
+  "fall_rule": "penalty",
+  "guards": true,
+  "test_terrain_seeds": [5000, 5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009],
+  "variants": {
+    "straight": {},
+    "knees": {"knees": true},
+    "knees_spot": {"knees": "spot"}
+  },
+  "hypotheses": [],
+  "hypotheses_tag": ""
+}

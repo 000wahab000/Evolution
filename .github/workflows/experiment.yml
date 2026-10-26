@@ -1,0 +1,89 @@
+name: experiment
+
+# Run: push to a branch named experiment/<config-name> (runs experiments/<config-name>.json),
+# or dispatch manually once this file is on the default branch.
+on:
+  push:
+    branches: ["experiment/**"]
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: Experiment config path
+        default: experiments/exp4_knees_v2.json
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      exp: ${{ steps.m.outputs.exp }}
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: m
+        env:
+          INPUT_EXP: ${{ inputs.experiment }}
+        run: |
+          EXP="${INPUT_EXP:-experiments/${GITHUB_REF_NAME#experiment/}.json}"
+          test -f "$EXP" || { echo "no config at $EXP"; exit 1; }
+          echo "exp=$EXP" >> "$GITHUB_OUTPUT"
+          EXP="$EXP" python -c "import json,os; c=json.load(open(os.environ['EXP'])); m=[{'variant':v,'seed':s} for v in c['variants'] for s in c['seeds']]; open(os.environ['GITHUB_OUTPUT'],'a').write('matrix='+json.dumps(m)+'\n')"
+
+  run:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt scipy cma matplotlib
+      - env:
+          EXP: ${{ needs.plan.outputs.exp }}
+          VARIANT: ${{ matrix.variant }}
+          SEED: ${{ matrix.seed }}
+        run: python scripts/run_experiment.py "$EXP" --only "$VARIANT" --seeds "$SEED" --workers 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: run-${{ matrix.variant }}-${{ matrix.seed }}
+          path: results/
+
+  collect:
+    needs: [plan, run]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      EXP: ${{ needs.plan.outputs.exp }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt scipy cma matplotlib
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: run-*
+          merge-multiple: true
+          path: results/
+      - name: Rebuild manifest (never trains)
+        run: |
+          python -c "import os; from src.research.config import ExperimentConfig; from src.research.runner import _write_manifest; e=ExperimentConfig.load(os.environ['EXP']); _write_manifest(e,'results',{})"
+          echo "EXP_NAME=$(python -c "import json,os; print(json.load(open(os.environ['EXP']))['name'])")" >> "$GITHUB_ENV"
+      - name: Verify
+        continue-on-error: true
+        run: python scripts/verify_results.py "results/$EXP_NAME"
+      - name: Analyze
+        run: python scripts/analyze.py "results/$EXP_NAME" --no-replay --allow-incomplete
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ env.EXP_NAME }}
+          path: results/${{ env.EXP_NAME }}
