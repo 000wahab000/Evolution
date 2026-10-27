@@ -8,6 +8,9 @@ the files, and the dashboard plays them back client-side. Re-run after training 
     python scripts/record_replay.py
     python scripts/record_replay.py --champion results/exp1_cpg/cpg/seed_7/champion.npz --out PATH
 
+Kneed champions (config.json knees) add top-level "knees", "seg" [w, h] and "shin_fields", and
+12 shin columns (x, y, a per leg) after vx in every frame. Straight replays are unchanged.
+
 --champion replays an experiment run's champion with that run's brain input on its first test
 terrain (read from the sibling config.json), so the dashboard shows what the metrics measured.
 """
@@ -33,6 +36,7 @@ OUT_DIR = os.path.join(ROOT, "web", "static", "replays")
 MAX_STEPS = 600  # same cap as /api/stream/sim
 FPS = 45  # the stream's frame rate
 SPAWN_X = 400.0
+SHIN_FIELDS = [f"s{i}{k}" for i in range(4) for k in "xya"]
 FIELDS = ["tx", "ty", "ta"] + [f"l{i}{k}" for i in range(4) for k in "xya"] + ["a0", "a1", "a2", "a3", "vx"]
 
 
@@ -73,12 +77,15 @@ def record(name, state_dict=None, env=None, label=None, max_steps=MAX_STEPS):
         frame = [round(env.torso.position.x, 2), round(env.torso.position.y, 2), round(env.torso.angle, 3)]
         for leg in env.legs:
             frame += [round(leg.position.x, 2), round(leg.position.y, 2), round(leg.angle, 3)]
-        frame += [round(float(a), 2) for a in action] + [round(env.torso.velocity.x, 1)]
+        frame += [round(float(a), 2) for a in action[:4]] + [round(env.torso.velocity.x, 1)]  # hip actions only
+        for shin in env.shins if env.knees else []:  # kneed replays append shin columns (SHIN_FIELDS)
+            frame += [round(shin.position.x, 2), round(shin.position.y, 2), round(shin.angle, 3)]
         frames.append(frame)
 
     fitness, steps, fallen = run_episode(env, brain, max_steps, on_step=on_step)
 
     terrain = terrain_polyline(env)
+    knees = {"knees": True, "seg": [10, env.seg_length], "shin_fields": SHIN_FIELDS} if env.knees else {}
     return {
         "model": name,
         **({"label": label} if label else {}),
@@ -94,6 +101,7 @@ def record(name, state_dict=None, env=None, label=None, max_steps=MAX_STEPS):
         "terrain": terrain,
         "recorded_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "fields": FIELDS,
+        **knees,
         "frames": frames,
     }
 
@@ -114,7 +122,8 @@ def record_champion(champion_path, label=None):
 
 
 def save(replay, path):
-    assert all(len(f) == len(FIELDS) for f in replay["frames"])
+    n = len(FIELDS) + (len(SHIN_FIELDS) if replay.get("knees") else 0)
+    assert all(len(f) == n for f in replay["frames"])
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(replay, f, separators=(",", ":"))
