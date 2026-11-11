@@ -142,15 +142,15 @@ class CreatureEnv:
         self.knee_range = (-math.radians(150), -math.radians(14)) if self.spot else (-np.pi / 2, 0.0)
         self.shins = []
         self.shin_shapes = []
-        knee_motors = []
+        knee_motors = [] # defining all the maths array what nots
         moment = pymunk.moment_for_box(leg_mass, (leg_width, seg))
         for anchor in self.anchors:
             bodies = []
-            for k in range(2):
+            for k in range(2): # making 2 since front and back 
                 b = pymunk.Body(leg_mass, moment)
                 b.position = (
-                    self.torso.position.x + anchor[0],
-                    self.torso.position.y + anchor[1] + seg / 2 + k * seg,
+                    self.torso.position.x + anchor[0], # leg
+                    self.torso.position.y + anchor[1] + seg / 2 + k * seg, # knee thingy
                 )
                 shape = pymunk.Poly.create_box(b, (leg_width, seg))
                 shape.friction = 1.2
@@ -169,7 +169,7 @@ class CreatureEnv:
             knee = pymunk.PivotJoint(thigh, shin, (0, seg / 2), (0, -seg / 2))
             knee_limit = pymunk.RotaryLimitJoint(thigh, shin, *self.knee_range)
             knee_motor = pymunk.SimpleMotor(thigh, shin, 0)
-            knee_motor.max_force = 75000
+            knee_motor.max_force = 30000
             self.space.add(pivot, limit, motor, knee, knee_limit, knee_motor)
             self.joints.append(pivot)
             self.motors.append(motor)
@@ -270,7 +270,7 @@ class CreatureEnv:
     def step(self, actions):
         for i, (motor, action) in enumerate(zip(self.motors, actions)):
             motor.rate = float(action) * (-10.0 if self.knees and i >= 4 else 10.0)
-
+            #tipi tipi tapa tapa tupi tupi 
         old_x = self.torso.position.x
         for _ in range(self.substeps):
             self.space.step(3 / 60.0 / self.substeps)
@@ -293,7 +293,7 @@ class CreatureEnv:
         torso_bottom = self.torso.position.y + 30.0 * abs(math.sin(torso_angle)) + 10.0 * abs(math.cos(torso_angle))
         if self.terrain.legacy:
             ground, deep = 495.0, 520.0
-        else:  # ground height under the torso; off the course counts as falling
+        else:  
             top = self.terrain.ground_top(self.torso.position.x)
             ground = top if top is not None else -math.inf
             deep = ground + 25.0
@@ -306,7 +306,7 @@ class CreatureEnv:
         if self.fitness_mode in ["ground_termination", "touch_ground"] and body_touched_ground:
             reward -= 100.0
         if self.guards:
-            pass  # no stillness penalty; the stuck rule below is progress based
+            pass  
         elif abs(self.torso.velocity.x) < 2.0 and self.steps > 45:
             self.still_steps += 1
             reward -= 0.1

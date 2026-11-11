@@ -28,6 +28,9 @@ research = [
 gym = [
     "gymnasium>=0.29",
 ]
+mujoco = [
+    "mujoco>=3.0",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.3.0",
