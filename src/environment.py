@@ -85,6 +85,7 @@ class CreatureEnv:
         self.create_ground()
         self.create_creature()
         self.steps = 0
+        self.reached = False
 
     def create_ground(self):
         self.ground_shapes = add_terrain(self.space, self.terrain)
@@ -312,6 +313,8 @@ class CreatureEnv:
             reward -= 0.1
         else:
             self.still_steps = 0
+        if self.reached == True:
+            reward += 1000
         if self.fall_rule == "penalty":
             if body_touched_ground:
                 reward -= 2.0
@@ -327,6 +330,7 @@ class CreatureEnv:
             stuck = self.still_steps > 60
         done = self.steps > 600 or fallen or stuck
         return state, reward, done, fallen
+        
 
     def get_state(self):
         torso_angle = self.torso.angle

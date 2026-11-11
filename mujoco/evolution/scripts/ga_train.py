@@ -49,6 +49,8 @@ if not hasattr(__import__("mujoco"), "MjModel"):
         "on sys.path."
     )
 
+DEFAULT_XML = Path(__file__).resolve().parent.parent / "models" / "smoke.xml"
+
 
 def _brain_factory(obs_size: int, act_size: int):
     """Return a zero-argument factory, so the GA can build matching brains."""
@@ -221,7 +223,7 @@ def parse_args(argv=None):
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--xml",
-        default="mujoco/evolution/models/smoke.xml",
+        default=str(DEFAULT_XML),
         help="MuJoCo model file to train on",
     )
     parser.add_argument("--out", default="mujoco/evolution/results")

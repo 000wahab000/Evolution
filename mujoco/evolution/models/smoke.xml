@@ -31,7 +31,7 @@
         <body name="frontleftshin" pos="0 0 -0.3">
           <joint name="frontleftknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
-            <site name="fl_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
+            <site name="fl_foot" pos="0 0 -0.3" size="0.15" rgba="1 0 0 1"/>
           <geom name="frontleftshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
@@ -46,7 +46,7 @@
         <body name="frontrightshin" pos="0 0 -0.3">
           <joint name="frontrightknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
-            <site name="fr_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
+            <site name="fr_foot" pos="0 0 -0.3" size="0.15" rgba="1 0 0 1"/>
           <geom name="frontrightshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
@@ -61,7 +61,7 @@
         <body name="backleftshin" pos="0 0 -0.3">
           <joint name="backleftknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
-            <site name="bl_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
+            <site name="bl_foot" pos="0 0 -0.3" size="0.15" rgba="1 0 0 1"/>
           <geom name="backleftshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
@@ -76,7 +76,7 @@
         <body name="backrightshin" pos="0 0 -0.3">
           <joint name="backrightknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
-            <site name="br_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
+            <site name="br_foot" pos="0 0 -0.3" size="0.15" rgba="1 0 0 1"/>
           <geom name="backrightshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
