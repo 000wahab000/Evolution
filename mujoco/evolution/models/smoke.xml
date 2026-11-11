@@ -1,20 +1,14 @@
 <mujoco model="dawg">
-  <!-- fix #1: implicitfast keeps the closed chain from exploding at this timestep -->
   <option timestep="0.0025" gravity="0 0 -9.81" integrator="implicitfast"/>
-
+  
   <worldbody>
     <light pos="0 -2 4" dir="0 0 -1"/>
     <geom name="ground" type="plane" size="5 5 0.1" friction="1 0.005 0.0001"/>
-
-    <!-- fix #2: torso z 0.2 -> 0.6, so the feet start on the ground, not 0.3 m under it.
-         hip is at torso_z + 0.1, legs are 0.3 + 0.3 long, so 0.6 + 0.1 - 0.6 = 0.1 clearance. -->
     <body name="torso" pos="0 0 0.62">
+
       <freejoint name="root"/>
       <geom type="box" size="0.3 0.15 0.1" mass="5" rgba="0.7 0.5 0.3 1"/>
-
-      <!-- fix #3: forward is +x, so the FRONT pair lives at +x and the BACK pair at -x -->
       <body name="frontleft" pos="0.3 0.15 0.1">
-        <!-- fix #4: hinge axis 1 0 0 -> 0 1 0, so the leg swings fore/aft (x-z plane) -->
         <joint name="frontlefthip" type="hinge" axis="0 1 0" range="-1.05 1.05"
                damping="0.5" armature="0.01"/>
         <geom name="frontleftthigh" type="box" size="0.05 0.05 0.15" mass="1"
@@ -73,8 +67,6 @@
   </worldbody>
 
   <actuator>
-    <!-- fix #5: gear 100 on a 1 kg link is ~10 g of acceleration per unit ctrl.
-         gear 25 + ctrlrange keeps the search space sane. -->
     <motor name="frontleftmotor" joint="frontlefthip" gear="25" ctrlrange="-1 1"/>
     <motor name="frontleftkneemotor" joint="frontleftknee" gear="25" ctrlrange="-1 1"/>
     <motor name="frontrightmotor" joint="frontrighthip" gear="25" ctrlrange="-1 1"/>
