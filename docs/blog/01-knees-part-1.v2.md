@@ -10,10 +10,10 @@ Alt titles:
 
 I gave my simulated four-legged robot knees, expecting better handling of slopes. Instead, every kneed champion fell on every test course.
 
-![Straight and kneed champions on a test course](images/dive-replay.gif)
-> **Why it's here:** The result before the argument: the whole run on a held-out test course. **How to read it:** Straight is blue (top) and knees orange (bottom); counters and ruler are in px, so watch the lower lane end. **Why it matters:** It shows what 100 of 100 falls looks like in motion.
+![Two-lane replay: straight legs (blue, top) keep walking; knees (orange, bottom) lunge to 263 px and fall](images/dive-replay.gif)
+> **Why it's here:** The result before the argument: the first 160 of 600 steps on a held-out test course, best straight seed against best kneed seed. **How to read it:** Straight is blue (top) and knees orange (bottom); counters and ruler are in px, so watch the lower lane end. **Why it matters:** It shows one of those 100 falls in motion.
 
-What I found points at my own rules and a bug, not knees as such. Two of those are in the code. The third, that the reward makes diving pay, is still a guess.
+What I found points at my own rules and a bug, not knees as such. Two problems are in the code: a fall rule that counts a low torso as a fall, and joint limits that did not hold. The third, that the reward makes a forward dive pay, is still a guess.
 
 ## The experiment
 
@@ -40,7 +40,7 @@ Reward per step is +2 times forward torso movement, and -0.1 for standing still 
 The fall rule matters most. A "fall" is any of these: tilt above 1.2 rad, the torso sinking 25 px below ground, or the lowest corner of the torso box reaching ground height. That last check is purely geometric, so a level but low torso counts as a fall. Optional tilt and energy terms were off (default `baseline` mode).
 
 ![The fall rule used in the experiment](images/fitness-fall-rule.png)
-> **Why it's here:** The code behind the rule above, and my main suspect. **How to read it:** Line 205 flags the lowest torso corner reaching ground height; lines 219 and 221 join it to tilt and sinking with `or`, and line 223 ends the episode. **Why it matters:** Any one condition kills the walker, so tilt is not required.
+> **Why it's here:** The code behind the rule above, and my main suspect. **How to read it:** Line 205 flags the lowest torso corner reaching ground height; line 221 (the branch this experiment ran; 219 is for other fitness modes) joins it to tilt and sinking with `or`, and line 223 ends the episode. **Why it matters:** Any one condition kills the walker, so tilt is not required.
 
 ## How I built the knees
 
@@ -66,7 +66,7 @@ Knees is an opt-in flag, off by default, so the old creature is unchanged.
 
 ## Results
 
-I ran 10 seeds per body. A seed is one random starting point for a training run. I report the IQM, the mean of the middle 50% of seeds, so one odd run cannot swing it. Brackets are 95% bootstrap confidence intervals (10,000 resamples). Cliff's δ is how often one group beats the other: -1 means knees are always lower, 0 no difference.
+Before training I wrote down two predictions: H6, knees go further on the test courses; H7, knees fall less. I ran 10 seeds per body. A seed is one random starting point for a training run. I report the IQM, the mean of the middle 6 of 10 seeds, so one odd run cannot swing it. Brackets are 95% bootstrap confidence intervals (10,000 resamples). Cliff's δ is how often one group beats the other: -1 means knees are always lower, 0 no difference.
 
 | Test courses | Straight | Knees |
 |---|---|---|
@@ -80,34 +80,34 @@ I ran 10 seeds per body. A seed is one random starting point for a training run.
 
 The 100 episodes per body are 10 seeds times 10 courses. A random kneed seed beats a random straight seed 24% of the time.
 
-![Final test distance per seed](../evolving-virtual-creatures/01-knees/screenshots/F2-final-test-distance.png)
-> **Why it's here:** The spread behind the IQM. **How to read it:** One dot per seed, distance in px; knees are blue and straight orange, each with train (light, left) and test (dark, right), and the bar is the IQM with its 95% bootstrap interval. **Why it matters:** Knee dots sit within about 140-250 px, while straight dots run from about 140 to over 1,100 px, hence the wide interval and p of 0.054.
+![Dot plot of final distance per seed: kneed seeds sit at about 140-300 px, straight seeds spread from about 140 to 1,700 px](images/F2-final-distance.png)
+> **Why it's here:** The spread behind the IQM. **How to read it:** One dot per seed, distance in px; knees are orange and straight blue, as in the replays, each with train (light, left) and test (dark, right), and the bar is the IQM with its 95% bootstrap interval. **Why it matters:** Knee dots sit within about 140-300 px, while straight dots run from about 140 to about 1,700 px, hence the wide interval and p of 0.054.
 
-The kneed champions also fell on every easy course: the train-like evaluation courses in each seed's `final_test.json` show a fall rate of 1.0 for all 10 kneed seeds. The gap is large but uncertain: the straight interval runs from 190 to 718 px, and the two-sided p of 0.054 does not clear 0.05.
+The kneed champions also fell on every easy course: the train-like evaluation courses in each seed's `final_test.json` show a fall rate of 1.0 for all 10 kneed seeds. Most of them never reached a slope. Every course starts with 200 px of flat ground, and 8 of the 10 kneed champions fell on that flat start, at the same spot (within 1 px) on all 20 courses they were scored on. The gap is large but uncertain: the straight interval runs from 190 to 718 px, and the two-sided p of 0.054 does not clear 0.05.
 
-Deviation: My pre-registration said 30 seeds per variant. I ran 10 to save laptop time (34 core-hours, and the CPU hit 87 °C), and I did not record that as a deviation at the time. With 10 seeds, a p of 0.054 is underpowered, not evidence of "no difference".
+Deviation: My pre-registration said 30 seeds per variant. I ran 10 to save laptop time (34 core-hours, and the CPU hit 87 °C), and I did not record that as a deviation at the time. With 10 seeds, a p of 0.054 is underpowered, not evidence of "no difference". A second gap: I committed H6 and H7 only after the runs finished (the runs logged uncommitted changes), so the repo cannot prove the predictions came first.
 
-![Learning curves on test courses](../evolving-virtual-creatures/01-knees/screenshots/F1-learning-curves.png)
-> **Why it's here:** When knees stop improving. **How to read it:** X is training episodes and y is champion test distance in px; each line is the IQM over 10 seeds with its 95% bootstrap band, knees a solid blue line and straight a dashed orange one. **Why it matters:** The blue line climbs to about 130 px by 6,000 episodes (a quarter of the budget) and then creeps to about 160, while orange keeps climbing and its band widens.
+![Learning curves: knees flatten near 160 px; straight climbs to about 395 px](images/F1-learning-curves.png)
+> **Why it's here:** When knees stop improving. **How to read it:** X is training episodes and y is champion test distance in px; each line is the IQM over 10 seeds with its 95% bootstrap band, straight a solid blue line and knees a dashed orange one. **Why it matters:** The orange knee line climbs to about 130 px by 6,250 episodes (a quarter of the budget) and then creeps to about 160, while the blue straight line keeps climbing and its band widens.
 
 From each seed's `history.csv`, the median best training score at 20/40/60/80/100% of the budget was 246/427/516/594/782 for straight and 112/153/182/172/174 for knees. The kneed median test distance was 154 px at 80% and 162 px at 100%.
 
 ## What I measured, what I found, what I'm guessing
 
-**Found in the code.** I inspected the code and ran a diagnostic replay of kneed seeds 0, 1 and 4. Two things came out of it.
+**Found in the code.** I inspected the code and replayed every champion on its held-out courses with the code that ran. Two things came out of it.
 
-First, the fall events had small tilt, between 0.07 and 0.78 rad. These were low torsos, not tip-overs: the geometric check from the experiment section fired.
+First, all 100 kneed test falls had small tilt, between 0.06 and 0.82 rad, under the 1.2 rad limit. These were low torsos, not tip-overs: the geometric check from the experiment section fired every time, never tilt or sinking.
 
-![Replay at the end of a kneed episode](images/replay-course-a.png)
-> **Why it's here:** The frozen evidence frame from the replay GIF. **How to read it:** This is the last frame of the two-lane view, straight in blue (214 px) on top and knees in orange (263 px) below with the red FELL badge. The kneed torso is tilted about 40-45°, roughly 0.78 rad. **Why it matters:** That is below the 1.2 rad (69°) threshold, so the geometric check ended the episode, not a tip-over.
+![Frame where the kneed episode ends: straight legs at 214 px; kneed robot collapsed at 263 px with a red FELL badge](images/replay-course-a.png)
+> **Why it's here:** The frozen evidence frame from the replay GIF. **How to read it:** This is the two-lane view at the kneed fall (step 44), straight in blue (214 px) on top and knees in orange (263 px) below with the red FELL badge. The kneed torso is tilted about 40-45°, roughly 0.78 rad, near the top of the range above. **Why it matters:** That is below the 1.2 rad (69°) threshold, so the geometric check ended the episode, not a tip-over.
 
-Second, the knees bent to 116-128°, past the 90° limit. The limit is a soft joint that corrects only after it is violated, and the 10 rad/s motor outran it. This was my bug.
+Second, in all ten kneed seeds the knees bent to 103-143°, past the 90° limit, and up to 81° the wrong way past straight. The limit is a soft joint that corrects only after it is violated, and the 10 rad/s motor outran it. The ±60° hip limits leaked the same way, in both bodies: up to 92° with straight legs and 148° with knees. This was my bug.
 
 **Hypothesis.** Here is why I think the GA settles on a dive. No experiment has isolated this, so the arithmetic is illustration, not proof.
 
 With +2 per pixel and one -100 fall, a 200 px lunge earns about +400 minus 100, so about +300. The kneed champions' per-seed test means were 138-245 px. That beats an early clumsy walker, so the GA can settle there.
 
-I underplayed a second warning. The analysis reruns each champion at half the physics timestep, and flags it as possibly exploiting the simulator if distance drops by over 30%. 8 of 10 straight seeds and 10 of 10 kneed seeds were flagged, with an IQM drop of about 72-73% (73.2% knees, 72.1% straight). Both gaits depend heavily on step size.
+I underplayed a second warning. The analysis reruns each champion at half the physics timestep, and flags it as possibly exploiting the simulator if distance drops by over 30%. 8 of 10 straight seeds and 10 of 10 kneed seeds were flagged, and the IQM distance fell by about 72-73% (73.2% knees, 72.1% straight). Both gaits depend heavily on step size. Every straight seed inside the 394 px IQM was flagged, so that number leans on step size too. The kneed falls do not: they stay at 100/100 at half step.
 
 Straight legs also fell, 17/100 under the same rule, so the rule alone does not explain 100/100. A bent knee lowers the torso toward the geometric trigger; a stiff stick cannot.
 
@@ -122,26 +122,24 @@ The bundled change (body, 4 motors and a bigger brain) limits both predictions. 
 ## Lessons from this case
 
 - **Test what ends an episode on its own.** A level torso can be "dead" under a geometric rule, and I only saw that after replaying the falls.
-- **Check that limits hold under full motor power.** My 90° limit let the knee reach 128°.
+- **Check that limits hold under full motor power.** My 90° knee limit let knees reach 143°, and the hips passed their 60° limit in both bodies.
 - **A fitness number says "worse", never "why".**
 - **One change can be three.** "Add knees" was a body, four motors and a bigger brain, so I cannot say which mattered.
 - **Log deviations when you make them.** I cut 30 seeds to 10 and did not write it down.
 
 ## What's next (Part 2)
 
-This is planned, not run. Part 2 trains straight, knees, and a Spot-inspired knee (14-150°, standing bent 30°), all with a new fall rule: -2 reward per step while the torso touches the ground, instead of ending the episode. Knee limits are enforced in code after every physics step. Training moves to GitHub Actions.
+The full experiment is planned, not run (a 2-seed pilot has run). Part 2 trains straight, knees, and a Spot-inspired knee (14-150°, standing bent 30°), all with a new fall rule: -2 reward per step while the torso touches the ground, instead of ending the episode. Knee limits are enforced in code after every physics step. Training moves to GitHub Actions.
 
-Part 2 fixes the rule and the limit together, so it will not say which mattered. Two runs would separate them: (a) the kneed body with the enforced limit under the old fall rule, which I would want to run too, and (b) the straight body under the new penalty rule, which is already in Part 2's plan.
+Part 2 fixes the rule and the limit together, so it will not say which mattered. Two runs would separate them: (a) the kneed body with the enforced limit under the old fall rule, which I would want to run too, and (b) the straight body under the new penalty rule alone. Part 2's straight body also gets new physics guards, so it does not isolate the rule.
 
 ## How I built this
 
-I designed the experiments, chose what to test from the papers I read, and made the calls on fairness and results. AI coding agents (Claude) wrote most of the code from my plans; I reviewed the changes, and automated tests checked every run. Unit tests check that the straight creature's sensors and config hash are unchanged. The mistakes here, including the knee bug, are mine.
+I designed the experiments, chose what to test from the papers I read, and made the calls on fairness and results. AI coding agents (Claude) wrote most of the code from my plans; I reviewed the changes, and automated tests checked every run. Unit tests check that the straight creature's input count, legs, motors and config hash are unchanged. The mistakes here, including the knee bug, are mine.
 
 ## Code and data
 
-Repo: [github.com/000wahab000/Evolution](https://github.com/000wahab000/Evolution). Experiment config: [`experiments/exp3_knees.json`](https://github.com/000wahab000/Evolution/blob/main/experiments/exp3_knees.json). Hypotheses: [`experiments/HYPOTHESES.md`](https://github.com/000wahab000/Evolution/blob/main/experiments/HYPOTHESES.md). Fall and reward code: [`src/environment.py`](https://github.com/000wahab000/Evolution/blob/main/src/environment.py).
+Repo: [github.com/000wahab000/Evolution](https://github.com/000wahab000/Evolution). Experiment config: [`experiments/exp3_knees.json`](https://github.com/000wahab000/Evolution/blob/main/experiments/exp3_knees.json). Hypotheses: [`experiments/HYPOTHESES.md`](https://github.com/000wahab000/Evolution/blob/main/experiments/HYPOTHESES.md). Fall and reward code as it ran: [`src/environment.py` at 76a2da5](https://github.com/000wahab000/Evolution/blob/76a2da5/src/environment.py).
 Full numbers: [`results.md`](https://github.com/000wahab000/Evolution/blob/main/docs/evolving-virtual-creatures/01-knees/results.md).
 
-The raw per-seed results and the diagnostic script will be published with the repo before this post goes live.
-
-<!-- TODO: check links resolve after merge -->
+I'll add the raw per-seed results and the diagnostic script to the repo.
