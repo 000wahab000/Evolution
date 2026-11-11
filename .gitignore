@@ -8,6 +8,9 @@ venv/
 env/
 .env
 
+# MuJoCo virtualenv (mujoco + mujoco-studio wheels are ~400 MB, 14k files)
+.venv-mujoco/
+
 # Caches & IDE
 .pytest_cache/
 .ruff_cache/
@@ -30,3 +33,8 @@ data/logs/evolution_all_runs.png
 
 # Experiment outputs: publish a finished experiment once with git add -f (see scripts/verify_results.py)
 results/
+
+# MuJoCo: warning/crash dumps it drops in the working directory
+MUJOCO_LOG.TXT
+mjmodel.xml
+MJMODEL.TXT
