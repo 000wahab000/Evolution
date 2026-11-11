@@ -1,9 +1,23 @@
 <mujoco model="dawg">
   <option timestep="0.0025" gravity="0 0 -9.81" integrator="implicitfast"/>
-  
+
   <worldbody>
-    <light pos="0 -2 4" dir="0 0 -1"/>
-    <geom name="ground" type="plane" size="5 5 0.1" friction="1 0.005 0.0001"/>
+    <light pos="0 -5 4"  dir="0 0 -1"/>
+    <light pos="0 -10 4" dir="0 0 -1"/>
+    <light pos="0 10 4"  dir="0 0 -1"/>
+    <light pos="0 5 4"   dir="0 0 -1"/>
+
+    <light pos="5 -5 4"  dir="0 0 -1"/>
+    <light pos="5 -10 4" dir="0 0 -1"/>
+    <light pos="5 10 4"  dir="0 0 -1"/>
+    <light pos="5 5 4"   dir="0 0 -1"/>
+
+    <light pos="-5 -5 4"  dir="0 0 -1"/>
+    <light pos="-5 -10 4" dir="0 0 -1"/>
+    <light pos="-5 10 4"  dir="0 0 -1"/>
+    <light pos="-5 5 4"   dir="0 0 -1"/>
+
+    <geom name="ground" type="plane" size="10 10 0.1" friction="1 0.005 0.0001"/>
     <body name="torso" pos="0 0 0.62">
 
       <freejoint name="root"/>
@@ -17,6 +31,7 @@
         <body name="frontleftshin" pos="0 0 -0.3">
           <joint name="frontleftknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
+            <site name="fl_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
           <geom name="frontleftshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
@@ -31,6 +46,7 @@
         <body name="frontrightshin" pos="0 0 -0.3">
           <joint name="frontrightknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
+            <site name="fr_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
           <geom name="frontrightshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
@@ -45,6 +61,7 @@
         <body name="backleftshin" pos="0 0 -0.3">
           <joint name="backleftknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
+            <site name="bl_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
           <geom name="backleftshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
@@ -59,21 +76,27 @@
         <body name="backrightshin" pos="0 0 -0.3">
           <joint name="backrightknee" type="hinge" axis="0 1 0" range="-2 0"
                  damping="0.5" armature="0.01"/>
+            <site name="br_foot" pos="0 0 -0.3" size="0.02" rgba="1 0 0 1"/>
           <geom name="backrightshingeom" type="box" size="0.05 0.05 0.15" mass="1"
                 pos="0 0 -0.15" rgba="0.4 0.6 0.8 1"/>
         </body>
       </body>
     </body>
   </worldbody>
-
+      <sensor>
+            <touch name="fl_touch" site="fl_foot"/>
+            <touch name="fr_touch" site="fr_foot"/>
+            <touch name="bl_touch" site="bl_foot"/>
+            <touch name="br_touch" site="br_foot"/>
+      </sensor>
   <actuator>
-    <motor name="frontleftmotor" joint="frontlefthip" gear="25" ctrlrange="-1 1"/>
-    <motor name="frontleftkneemotor" joint="frontleftknee" gear="25" ctrlrange="-1 1"/>
-    <motor name="frontrightmotor" joint="frontrighthip" gear="25" ctrlrange="-1 1"/>
+    <motor name="frontleftmotor"      joint="frontlefthip"   gear="25" ctrlrange="-1 1"/>
+    <motor name="frontleftkneemotor"  joint="frontleftknee"  gear="25" ctrlrange="-1 1"/>
+    <motor name="frontrightmotor"     joint="frontrighthip"  gear="25" ctrlrange="-1 1"/>
     <motor name="frontrightkneemotor" joint="frontrightknee" gear="25" ctrlrange="-1 1"/>
-    <motor name="backleftmotor" joint="backlefthip" gear="25" ctrlrange="-1 1"/>
-    <motor name="backleftkneemotor" joint="backleftknee" gear="25" ctrlrange="-1 1"/>
-    <motor name="backrightmotor" joint="backrighthip" gear="25" ctrlrange="-1 1"/>
-    <motor name="backrightkneemotor" joint="backrightknee" gear="25" ctrlrange="-1 1"/>
+    <motor name="backleftmotor"       joint="backlefthip"    gear="25" ctrlrange="-1 1"/>
+    <motor name="backleftkneemotor"   joint="backleftknee"   gear="25" ctrlrange="-1 1"/>
+    <motor name="backrightmotor"      joint="backrighthip"   gear="25" ctrlrange="-1 1"/>
+    <motor name="backrightkneemotor"  joint="backrightknee"  gear="25" ctrlrange="-1 1"/>
   </actuator>
 </mujoco>
