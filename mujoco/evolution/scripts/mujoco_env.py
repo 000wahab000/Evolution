@@ -24,9 +24,19 @@ import mujoco
 MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "smoke.xml"
 FALLEN_HEIGHT = 0.25
 
+# Reaching GOAL_DISTANCE metres from the start pays GOAL_BONUS once per episode.
+# It is a one-time jackpot, not a per-step payout, so a brain cannot farm it by
+# parking on the line.
+GOAL_DISTANCE = 2.0
+GOAL_BONUS = 1000.0
+
 class MujocoDogEnv:
 
-    def __init__(self, max_steps=600, xml_path=None):
+    def __init__(self, max_steps=600, xml_path=None,
+                 goal_distance=GOAL_DISTANCE, goal_bonus=GOAL_BONUS):
+        self.goal_distance = float(goal_distance)
+        self.goal_bonus = float(goal_bonus)
+        self.goal_hit = False
         self.model = mujoco.MjModel.from_xml_path(str(xml_path or MODEL_PATH))
         self.data = mujoco.MjData(self.model)
         self.max_steps = max_steps
@@ -64,6 +74,7 @@ class MujocoDogEnv:
         mujoco.mj_forward(self.model, self.data)  # send the new one out
         self.steps = 0
         self.start_x = float(self.data.qpos[0])
+        self.goal_hit = False
         self.step_log = []
         self._down = {leg: False for leg in self.legs}
         self._lifted_at = {leg: -1.0 for leg in self.legs}
@@ -112,7 +123,14 @@ class MujocoDogEnv:
                         break
             self._down[leg] = down
             self._lifted_at[leg] = now
-        reward = (self.data.qpos[0] - self.start_x) * 2.0
+        distance = self.data.qpos[0] - self.start_x
+        reward = distance * 2.0
+
+        # EXTREME one-time reward for crossing the goal line.
+        if not self.goal_hit and distance >= self.goal_distance:
+            self.goal_hit = True
+            reward += self.goal_bonus
+
         fallen = bool(self.data.qpos[2] < FALLEN_HEIGHT)
         done = bool(fallen or self.steps >= self.max_steps)
         return self._observation(), reward, done, fallen

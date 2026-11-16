@@ -11,12 +11,20 @@
 #define DOG_FALLEN_HEIGHT 0.25
 #define DOG_MAX_HINGES 16
 
+/* Reaching DOG_GOAL_X metres from the start pays DOG_GOAL_BONUS once per
+ * episode.  One-time only, so a brain cannot farm it by parking on the line. */
+#define DOG_GOAL_X 2.0
+#define DOG_GOAL_BONUS 1000.0
+
 typedef struct {
     mjModel *model;
     mjData *data;
     int max_steps;
     int steps;
     double start_x;
+    double goal_x;
+    double goal_bonus;
+    int goal_hit;
 
     int nangle;
     int nvel;

@@ -47,8 +47,10 @@ static void usage(FILE *out)
             "  --out DIR           where history.csv goes          [%s]\n"
             "  --model PATH        best brain to save              [%s]\n"
             "  --workers N         accepted; this build is single-process\n"
+            "  --goal-x M          metres from start that pays the goal bonus [%.2f]\n"
+            "  --goal-bonus F      one-time reward for crossing --goal-x       [%.0f]\n"
             "  -h, --help          show this text\n",
-            DEFAULT_XML, DEFAULT_OUT, DEFAULT_MODEL);
+            DEFAULT_XML, DEFAULT_OUT, DEFAULT_MODEL, DOG_GOAL_X, DOG_GOAL_BONUS);
 }
 
 static int parse_int(const char *text, int *out)
