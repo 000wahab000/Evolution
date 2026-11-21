@@ -32,6 +32,11 @@ prints that tag. Results are reported whether they confirm or refute these hypot
 - H10 (descriptive only, not tested): kneed walkers fall less often than exp3's 100%.
 - Holm set: exp4: H8, H9. Absolute distances are not compared with exp3 (different runner hardware).
 
+**Experiment 5, optimizers on knees** (`experiments/exp5_optimizers_knees.json`, `knees=true`, 520 weights, penalty fall rule):
+- **H11:** OpenAI-ES (antithetic pairs, centered-rank shaping, Adam) reaches a higher held-out test distance IQM than `es_raw`, the literal whiteboard update `theta += alpha/(n*sigma) * sum(F_i * eps_i)` (raw fitness, no baseline, no ranks, no Adam), at an equal episode budget. This isolates whether the shaping is what makes ES work here.
+- Every other pair (ga, cmaes, es_raw, openai_es, random_search) is exploratory.
+- Holm set: exp5: H11.
+
 ## Confirmatory contrasts
 
 | Id | A | B | Metric (per seed) | Predicted |
@@ -45,13 +50,15 @@ prints that tag. Results are reported whether they confirm or refute these hypot
 | H7 | knees | straight | fall rate (M2) | A < B |
 | H8 | knees | straight | test distance (M1), penalty fall rule | A > B |
 | H9 | knees_spot | knees | test distance (M1), penalty fall rule | A > B |
+| H11 | openai_es | es_raw | test distance (M1), knees, penalty fall rule | A > B |
 
 All other pairs are **exploratory** and are labelled as such in REPORT.md.
 
 ## Analysis rules
 
 - **Tests:** two-sided Mann-Whitney U per contrast. Holm correction is applied only within each
-  experiment's confirmatory set (exp1: H1-H3; exp2: H4, H5a-c; exp3: H6, H7; exp4: H8, H9), alpha = 0.05.
+  experiment's confirmatory set (exp1: H1-H3; exp2: H4, H5a-c; exp3: H6, H7; exp4: H8, H9;
+  exp5: H11), alpha = 0.05.
 - **Verdict:** *supported* if the Holm-adjusted p < 0.05 **and** the 95% bootstrap CI (10,000
   resamples) of the IQM difference A − B excludes 0 in the predicted direction. *Not supported* if
   both hold in the opposite direction. Otherwise *inconclusive*.
