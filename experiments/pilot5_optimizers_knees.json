@@ -1,0 +1,53 @@
+{
+  "name": "pilot5_optimizers_knees",
+  "seeds": [0, 1, 2, 3, 4],
+  "knees": true,
+  "fall_rule": "penalty",
+  "guards": true,
+  "brain_input": "cpg",
+  "episodes_budget": 5000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 1250,
+  "_note": "Pilot for exp5_optimizers_knees: 1/5 of the seeds and 1/5 of the budget. Same variants and hyperparameters, so it tests the plumbing and the learning curves before the full run. Its results are not evidence for H11.",
+  "variants": {
+    "ga": {
+      "optimizer": "ga",
+      "optimizer_params": {
+        "pop_size": 50
+      }
+    },
+    "cmaes": {
+      "optimizer": "cmaes",
+      "optimizer_params": {
+        "sigma0": 0.35
+      }
+    },
+    "openai_es": {
+      "optimizer": "openai_es",
+      "optimizer_params": {
+        "pop_size": 50,
+        "sigma": 0.02,
+        "lr": 0.01,
+        "weight_decay": 0.005
+      }
+    },
+    "es_raw": {
+      "optimizer": "es_raw",
+      "optimizer_params": {
+        "n_samples": 50,
+        "sigma": 0.15,
+        "alpha": 2e-05
+      }
+    },
+    "random_search": {
+      "optimizer": "random_search",
+      "optimizer_params": {
+        "n_directions": 8,
+        "step_size": 0.02,
+        "noise": 0.03
+      }
+    }
+  },
+  "hypotheses": [],
+  "hypotheses_tag": ""
+}

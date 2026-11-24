@@ -107,6 +107,32 @@ class OpenAIESOptimizer:
         return self.theta.copy()
 
 
+class RawESOptimizer:
+    """The textbook update from the whiteboard, unshaped: theta += alpha/(n*sigma) * sum(F_i * eps_i).
+
+    Raw fitness weights, plain SGD, no baseline, no rank shaping, no Adam, no weight decay. It is
+    the ablation for OpenAIESOptimizer, not a recommendation: raw fitness is scale-dependent, so
+    alpha is sized for rewards around 500 (2e-5). Recheck alpha if the reward scale changes.
+    """
+
+    def __init__(self, dim, rng, x0=None, n_samples=50, sigma=0.15, alpha=2e-5):
+        self.rng = rng
+        self.n, self.sigma, self.alpha = n_samples, sigma, alpha
+        self.theta = rng.normal(0.0, 0.25, dim) if x0 is None else np.array(x0, dtype=float)
+
+    def ask(self):
+        self.eps = self.rng.standard_normal((self.n, len(self.theta)))
+        return [self.theta + self.sigma * e for e in self.eps]
+
+    def tell(self, fitnesses):
+        f = np.asarray(fitnesses, dtype=float)
+        # The missing (f - mean(f)) baseline is the whole point of this variant: it stays literal.
+        self.theta = self.theta + self.alpha / (self.n * self.sigma) * (f @ self.eps)
+
+    def recommend(self):
+        return self.theta.copy()
+
+
 class RandomSearchOptimizer:
     """Mania et al. 2018 ARS V1: N antithetic directions, step scaled by the reward std."""
 
@@ -129,7 +155,7 @@ class RandomSearchOptimizer:
 
 
 OPTIMIZERS = {"ga": GAOptimizer, "cmaes": CMAESOptimizer, "openai_es": OpenAIESOptimizer,
-              "random_search": RandomSearchOptimizer}
+              "es_raw": RawESOptimizer, "random_search": RandomSearchOptimizer}
 
 
 def make_optimizer(name, dim, params, rng):

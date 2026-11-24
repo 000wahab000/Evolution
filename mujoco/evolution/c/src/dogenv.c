@@ -35,6 +35,8 @@ int dog_env_init(dog_env_t *env, const char *xml_path, int max_steps, char *err,
     env->free_qpos = -1;
     env->free_dof = -1;
     env->max_steps = max_steps;
+    env->goal_x = DOG_GOAL_X;
+    env->goal_bonus = DOG_GOAL_BONUS;
 
     char mjerr[1000];
     mjerr[0] = '\0';
@@ -118,6 +120,7 @@ const float *dog_env_reset(dog_env_t *env)
     mj_forward(env->model, env->data);
     env->steps = 0;
     env->start_x = env->data->qpos[env->free_qpos];
+    env->goal_hit = 0;
     observe(env);
     return env->obs;
 }
@@ -137,7 +140,15 @@ double dog_env_step(dog_env_t *env, const float *action, int *done, int *fallen)
     mj_step(env->model, env->data);
     env->steps++;
 
-    double reward = (env->data->qpos[env->free_qpos] - env->start_x) * 2.0;
+    double distance = env->data->qpos[env->free_qpos] - env->start_x;
+    double reward = distance * 2.0;
+
+    /* EXTREME one-time reward for crossing the goal line. */
+    if (!env->goal_hit && distance >= env->goal_x) {
+        env->goal_hit = 1;
+        reward += env->goal_bonus;
+    }
+
     *fallen = env->data->qpos[env->free_qpos + 2] < DOG_FALLEN_HEIGHT;
     *done = *fallen || env->steps >= env->max_steps;
 

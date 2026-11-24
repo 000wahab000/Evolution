@@ -61,11 +61,12 @@ def _brain_factory(obs_size: int, act_size: int):
     return make
 
 
-def evaluate_mujoco_genome(task: tuple[dict, int, str | None]) -> tuple[float, float, bool, int]:
+def evaluate_mujoco_genome(task: tuple[dict, int, str | None, float, float]) -> tuple[float, float, bool, int]:
     """Run one genome in MuJoCo and return (fitness, distance, fallen, steps)."""
-    state_dict, max_steps, xml_path = task
+    state_dict, max_steps, xml_path, goal_distance, goal_bonus = task
 
-    env = MujocoDogEnv(max_steps=max_steps, xml_path=xml_path)
+    env = MujocoDogEnv(max_steps=max_steps, xml_path=xml_path,
+                       goal_distance=goal_distance, goal_bonus=goal_bonus)
     state = env.reset()
 
     brain = CreatureBrain(input_size=env.obs_size, output_size=env.act_size)
@@ -94,12 +95,19 @@ def evaluate_mujoco_genome(task: tuple[dict, int, str | None]) -> tuple[float, f
 class MujocoPopulation(Population):
     """Population that evaluates genomes in MuJoCo instead of Pymunk."""
 
-    def __init__(self, model_class, pop_size, mutation_rate, mutation_scale, xml_path=None):
+    def __init__(self, model_class, pop_size, mutation_rate, mutation_scale, xml_path=None,
+                 goal_distance=2.0, goal_bonus=1000.0):
         super().__init__(model_class, pop_size, mutation_rate, mutation_scale)
         self.xml_path = xml_path
+        self.goal_distance = goal_distance
+        self.goal_bonus = goal_bonus
 
     def evaluate(self, max_steps: int = 600, pool=None):
-        tasks = [(model.state_dict(), max_steps, self.xml_path) for model in self.models]
+        tasks = [
+            (model.state_dict(), max_steps, self.xml_path,
+             self.goal_distance, self.goal_bonus)
+            for model in self.models
+        ]
         if pool is not None:
             results = pool.map(evaluate_mujoco_genome, tasks)
         else:
@@ -144,6 +152,8 @@ def train(
     mutation_scale: float = 0.35,
     seed: int = 0,
     xml_path: str | os.PathLike | None = None,
+    goal_distance: float = 2.0,
+    goal_bonus: float = 1000.0,
     out_dir: str | os.PathLike = "mujoco/evolution/results",
     model_path: str | os.PathLike = "mujoco/evolution/models/best_mujoco.npz",
 ) -> CreatureBrain:
@@ -159,6 +169,7 @@ def train(
     probe = MujocoDogEnv(max_steps=1, xml_path=xml)
     print(f"Model: {xml or probe.model.namemodel or 'default'}")
     print(f"Observation size {probe.obs_size} -> 16 -> action size {probe.act_size}")
+    print(f"Goal: +{goal_bonus:g} reward once at {goal_distance:g} m")
 
     population = MujocoPopulation(
         model_class=_brain_factory(probe.obs_size, probe.act_size),
@@ -166,6 +177,8 @@ def train(
         mutation_rate=mutation_rate,
         mutation_scale=mutation_scale,
         xml_path=xml,
+        goal_distance=goal_distance,
+        goal_bonus=goal_bonus,
     )
 
     pool = multiprocessing.Pool(processes=workers) if workers > 1 else None
@@ -228,6 +241,18 @@ def parse_args(argv=None):
     )
     parser.add_argument("--out", default="mujoco/evolution/results")
     parser.add_argument("--model", default="mujoco/evolution/models/best_mujoco.npz")
+    parser.add_argument(
+        "--goal-distance",
+        type=float,
+        default=2.0,
+        help="metres from the start that pays the goal bonus",
+    )
+    parser.add_argument(
+        "--goal-bonus",
+        type=float,
+        default=1000.0,
+        help="one-time reward for crossing --goal-distance",
+    )
     return parser.parse_args(argv)
 
 
@@ -242,6 +267,8 @@ def main(argv=None):
         mutation_scale=args.mutation_scale,
         seed=args.seed,
         xml_path=args.xml,
+        goal_distance=args.goal_distance,
+        goal_bonus=args.goal_bonus,
         out_dir=args.out,
         model_path=args.model,
     )

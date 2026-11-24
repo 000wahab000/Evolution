@@ -1,0 +1,66 @@
+{
+  "name": "exp5_optimizers_knees",
+  "seeds": [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+  ],
+  "knees": true,
+  "fall_rule": "penalty",
+  "guards": true,
+  "brain_input": "cpg",
+  "episodes_budget": 25000,
+  "rollouts_k": 5,
+  "eval_every_episodes": 1250,
+  "_note": "Optimizer comparison on the 520-weight kneed brain (23->16->8). Every variant gets the same episode budget, the same shared train scenarios per generation, and the same champion rule (recommend() re-scored on validation terrains). es_raw is the literal whiteboard update (raw fitness weights, plain SGD, no baseline/ranks/Adam); alpha=2e-5 is sized so the first update is ~0.01 per weight at reward ~500. This experiment holds the fall rule at penalty so all optimizers see the same knees-v2 landscape.",
+  "variants": {
+    "ga": {
+      "optimizer": "ga",
+      "optimizer_params": {
+        "pop_size": 50
+      }
+    },
+    "cmaes": {
+      "optimizer": "cmaes",
+      "optimizer_params": {
+        "sigma0": 0.35
+      }
+    },
+    "openai_es": {
+      "optimizer": "openai_es",
+      "optimizer_params": {
+        "pop_size": 50,
+        "sigma": 0.02,
+        "lr": 0.01,
+        "weight_decay": 0.005
+      }
+    },
+    "es_raw": {
+      "optimizer": "es_raw",
+      "optimizer_params": {
+        "n_samples": 50,
+        "sigma": 0.15,
+        "alpha": 2e-05
+      }
+    },
+    "random_search": {
+      "optimizer": "random_search",
+      "optimizer_params": {
+        "n_directions": 8,
+        "step_size": 0.02,
+        "noise": 0.03
+      }
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H11",
+      "a": "openai_es",
+      "b": "es_raw",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "At an equal episode budget, OpenAI-ES (antithetic pairs, centered ranks, Adam) reaches a higher held-out test distance IQM than the literal raw-fitness update theta += alpha/(n*sigma) * sum(F_i * eps_i). A non-significant result is inconclusive."
+    }
+  ],
+  "hypotheses_tag": ""
+}
