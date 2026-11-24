@@ -88,3 +88,19 @@ All other pairs are **exploratory** and are labelled as such in REPORT.md.
   tuning. The ARS V1 values must be checked against Mania et al. 2018 before the full run.
 - **Power note:** with 30 seeds, these tests reliably detect only large effects (Cliff's delta ≳ 0.4).
   A null H2 is reported as inconclusive, not as evidence against.
+
+## exp6_ppo (PPO baseline)
+
+Pre-registered before the first run.
+
+| ID | A | B | Metric | Direction |
+| --- | --- | --- | --- | --- |
+| H12 | ppo | ga | test distance (M1) | A > B |
+| H13 | ppo | ga | fall rate (M2) | A < B |
+
+- **Budget:** 25,000 episodes = 15M environment steps per run for both variants (`episodes_budget x max_steps`).
+- **Brain:** both variants use the same 15→16→4 tanh network. PPO's action mean is `tanh(action_net(policy_net(x)))`, so its champion exports bit-for-bit into `CreatureBrain`.
+- **Reward:** identical. PPO sees the same `-100` fall penalty the GA applies in `run_episode`, delivered on the terminal step (`CreatureEnv(fall_penalty=100)`).
+- **Champion rule:** as above, best mean return on the validation terrains, checked every 1,250 episodes. Test and control never select.
+- **Seeds:** 5 (0-4). With 5 seeds this is a directional screen, not a powered test (see the power note above).
+- **Notes:** `optimizer_params` in `experiments/exp6_ppo.json` pins the PPO hyperparameters. `n_envs=1` because `--workers` already runs the seeds in parallel.

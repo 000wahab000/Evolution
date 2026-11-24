@@ -2,7 +2,7 @@
 
 A 2D physics lab where creatures learn to walk through evolution, not backprop.
 
-No reinforcement learning frameworks. No PyTorch Lightning. No 40-package dependency hell. Just a genetic algorithm, a tiny neural net, and Pymunk doing all the heavy lifting.
+No reinforcement learning frameworks in the default path. No PyTorch Lightning. No 40-package dependency hell. Just a genetic algorithm, a tiny neural net, and Pymunk doing all the heavy lifting. (An optional PPO baseline sits behind `pip install -e .[rl]`, for comparison only.)
 
 ![Quadruped walking demo](docs/media/walking.gif)
 
@@ -97,6 +97,50 @@ When training is enabled (`TRAINING_ENABLED=1`, the local default), a **Live (se
 
 ---
 
+## MuJoCo track (3D physics)
+
+`mujoco/evolution/` re-runs the same genetic algorithm on [MuJoCo](https://mujoco.org/), a real 3D physics engine. The GA and `CreatureBrain` are imported from `src/` unchanged - the environment only has to provide `reset()` and `step(action) -> (obs, reward, done, fallen)`, so only the physics is new.
+
+**The dog** (`scripts/mujoco_env.py`, model `models/smoke.xml`):
+- 26 observations: 8 hinge angles, 8 hinge velocities, torso height, torso quaternion (w, x, y, z), torso angular velocity (3), linear velocity x/y. 8 motor outputs, so the brain is 26→16→8 (568 weights).
+- Reward is `2 x forward distance` plus a one-time 1000 bonus for crossing 2 m. An episode ends after 600 steps or when the torso drops below 0.25 m.
+- It also logs each foot's touchdown/liftoff and stance time, so a gait can be inspected instead of just scored.
+
+**Any model** (`scripts/generic_env.py`): joints and actuators are discovered from the MJCF, so a 12-DoF biped (Berkeley Humanoid, the default `models/berkerly model.xml`) or the Spot description in `models/boston_dynamics_spot/` both work. Observations are `2 x n_joints + 10`; `<position>` actuators get a target angle, `<motor>` actuators a torque. Reward is velocity + upright + alive, minus lateral drift and energy, and the episode ends when the torso tips past 0.5 or drops below 60% of home height. Compiled models are cached, since the GA builds a fresh env per genome.
+
+**C port** (`mujoco/evolution/c/`): headless `ga_train.exe` and `play_best.exe` - same algorithm, same `.npz` weights, no Python at run time. Build and usage: [mujoco/evolution/c/README.md](mujoco/evolution/c/README.md).
+
+### MuJoCo setup
+
+MuJoCo is not in `requirements.txt`. It lives in its own gitignored venv so the core 2D install stays light (built against MuJoCo 4.0):
+
+```powershell
+python -m venv .venv-mujoco
+.venv-mujoco\Scripts\pip install mujoco mujoco-menagerie numpy
+```
+
+Run the scripts with that interpreter, from the repo root.
+
+### Train and watch
+
+```powershell
+# evolve the dog: writes results/history.csv + models/best_mujoco.npz
+.venv-mujoco\Scripts\python mujoco\evolution\scripts\ga_train.py --generations 30 --pop 20 --workers 4
+
+# replay the saved brain in the MuJoCo viewer (Esc closes)
+.venv-mujoco\Scripts\python mujoco\evolution\scripts\play_best.py
+
+# same for any MJCF with a free joint + actuators
+.venv-mujoco\Scripts\python mujoco\evolution\scripts\ga_train_generic.py --xml "mujoco/evolution/models/boston_dynamics_spot/scene.xml" --generations 30 --pop 20
+.venv-mujoco\Scripts\python mujoco\evolution\scripts\play_generic.py --xml "mujoco/evolution/models/boston_dynamics_spot/scene.xml"
+```
+
+Both trainers take `--generations --pop --workers --max-steps --mutation-rate --mutation-scale --seed`; the generic one adds `--xml --action-scale --fall-penalty`. The `play_*` scripts take `--episodes 0` (loop forever), `--speed`, and `--headless`.
+
+One caveat: the folder is literally named `mujoco/`, which shadows the pip package. The scripts work around it by appending the repo root to `sys.path` instead of prepending it - any new code under `mujoco/` has to import the same way.
+
+---
+
 ## Quick start
 
 ```bash
@@ -173,6 +217,7 @@ Free tier heads-up: it sleeps after ~15 min idle (~1 min cold start), and there'
 | Piece | Why |
 | --- | --- |
 | **Pymunk** | 2D rigid body physics - fast, no GPU needed |
+| **MuJoCo** (optional) | 3D physics for the `mujoco/` track: articulated legs, contacts, quaternions. Same GA, same brain |
 | **NumPy** | The brain is 324 weights: two matmuls + `tanh`, plus crossover/mutation on plain arrays. No deep learning framework needed |
 | **Flask + SSE** | Real-time browser streaming without WebSockets |
 | **Python multiprocessing** | Parallel rollout evaluation across CPU cores |
@@ -209,6 +254,7 @@ src/
   model.py         - CreatureBrain (15→16→4 tanh network, or 23→16→8 with knees)
   terrain.py       - Course builders (legacy, fixed, seeded random)
   gym_env.py       - Gymnasium wrapper (Evolution1-Quadruped-v0)
+  rl/              - Optional PPO baseline: envs, tanh policy, CreatureBrain export, trainer
   research/        - Seeded experiments: optimizers, evaluation, stats, figures
 data/models/       - Saved checkpoints (best_model.npz, top_0..4.npz)
 data/logs/         - history.csv (tracked, drives the chart); evolution.log (local only)
@@ -219,6 +265,11 @@ notebooks/         - playground.ipynb (Colab or local)
 scripts/           - record_replay.py, run_experiment.py, analyze.py, plot_logs.py, ...
 docs/              - Study guide (LEARNING.md), strategy, plans, research notes, media
 tests/             - pytest suite
+mujoco/evolution/
+  scripts/         - MuJoCo dog env, generic MJCF env, GA trainers, viewer scripts
+  models/          - smoke.xml (the dog), Berkeley Humanoid, Boston Dynamics Spot, saved .npz brains
+  results/         - MuJoCo training histories
+  c/               - headless C port (ga_train.exe, play_best.exe) + build.ps1
 docs/evolving-virtual-creatures/ - Sims-paper track: roadmap, per-step docs, knees-changes.md
 docs/blog/         - Blog drafts and images
 docs/log/          - Session logs
@@ -236,6 +287,7 @@ Dockerfile, compose.yaml - Container build (Render) and local docker compose
 | v2 - Multi-core + web dashboard | Done | Parallel rollouts, SSE browser streaming, Docker |
 | v3 - Procedural terrain | In progress | Continuously linked slope segments with progressive difficulty |
 | Sims-paper track (knees, contact sensors, multi-course scoring, ...) | In progress | see docs/evolving-virtual-creatures/README.md |
+| MuJoCo 3D track | In progress | Same GA on MuJoCo: the dog, any Menagerie MJCF, and a C port |
 | v4 - Horse + rider | Planned | Extended morphology, rider balance constraints |
 | v5 - Vision | Planned | Directional sensors for the rider |
 | v6 - Multi-agent battles | Planned | Competitive co-evolution, combat physics |
@@ -245,6 +297,16 @@ Dockerfile, compose.yaml - Container build (Render) and local docker compose
 ## Why not just use RL?
 
 Standard RL (PPO, SAC, etc.) works but it's overkill for this problem and hides what's actually happening. With a genetic algorithm you can watch the exact population structure evolve, inspect individual genomes, and run the whole thing on laptop CPUs with no framework overhead.
+
+That claim is testable, so there is now an optional PPO baseline to test it against. `pip install -e .[rl]` adds Stable-Baselines3 and runs PPO on the same 15→16→4 tanh brain, the same reward, the same train distribution and the same 15M-step budget. The trained policy exports back into `CreatureBrain` weights, so both methods are scored by the same held-out evaluation, robustness and gait code:
+
+```bash
+pip install -e .[rl]
+python scripts/run_experiment.py experiments/exp6_ppo.json --workers 5
+python scripts/analyze.py results/exp6_ppo
+```
+
+`results/exp6_ppo/REPORT.md` then reports GA vs PPO with the same IQM/CI/Holm machinery as every other experiment (H12/H13 in `experiments/HYPOTHESES.md`).
 
 The network is deliberately tiny (324 params). It's enough to solve the gait. Adding layers right now would just slow down the evolutionary search without making the walking better - the bottleneck is the fitness landscape, not model capacity.
 

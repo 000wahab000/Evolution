@@ -10,6 +10,7 @@ from src.research.evaluate import (
     evaluate_genome,
     fixed_scenarios,
     from_flat,
+    rollout,
     to_flat,
     train_scenarios,
 )
@@ -66,3 +67,9 @@ def test_test_terrains_are_steeper_than_train():
     test = fixed_scenarios(CFG, "test")[0].terrain
     s = test.segments[2]
     assert abs((s.b[1] - s.a[1]) / (s.b[0] - s.a[0])) >= 0.05 - 1e-12
+
+
+def test_rollout_uses_the_config_horizon_not_the_env_default():
+    cfg = RunConfig(experiment="t", variant="v", seed=0, rollouts_k=1, max_steps=601)
+    out = rollout(load_state_dict_file(UNIVERSAL_BEST_PATH), cfg, Scenario(legacy_course()))
+    assert out["steps"] == 601

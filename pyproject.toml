@@ -28,6 +28,11 @@ research = [
 gym = [
     "gymnasium>=0.29",
 ]
+rl = [
+    "gymnasium>=0.29",
+    "stable-baselines3>=2.3",
+    "torch>=2.0",
+]
 mujoco = [
     "mujoco>=3.0",
 ]

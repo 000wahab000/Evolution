@@ -1,0 +1,37 @@
+{
+  "name": "smoke_ppo",
+  "seeds": [
+    0
+  ],
+  "episodes_budget": 60,
+  "rollouts_k": 2,
+  "max_steps": 60,
+  "eval_every_episodes": 20,
+  "test_terrain_seeds": [
+    1000,
+    1001
+  ],
+  "control_terrain_seeds": [
+    2000
+  ],
+  "validation_terrain_seeds": [
+    3000
+  ],
+  "train_eval_terrain_seeds": [
+    4000
+  ],
+  "variants": {
+    "ppo": {
+      "optimizer": "ppo",
+      "optimizer_params": {
+        "n_envs": 1,
+        "n_steps": 64,
+        "batch_size": 32,
+        "n_epochs": 2,
+        "learning_rate": 0.0003
+      }
+    }
+  },
+  "hypotheses": [],
+  "hypotheses_tag": ""
+}

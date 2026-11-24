@@ -64,6 +64,9 @@ def _csv(cols, rows):
 
 def run_one(cfg, out_root="results"):
     """Train one run to its episode budget and write its folder. Returns 'done' or 'skipped'."""
+    if cfg.optimizer == "ppo":
+        from src.rl.train import run_one_ppo  # lazy: torch is only imported for PPO runs
+        return run_one_ppo(cfg, out_root)
     d = run_dir(out_root, cfg)
     if is_done(d):
         reason = stale_reason(d, cfg)

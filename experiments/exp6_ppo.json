@@ -1,0 +1,60 @@
+{
+  "name": "exp6_ppo",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "episodes_budget": 25000,
+  "rollouts_k": 5,
+  "max_steps": 600,
+  "eval_every_episodes": 1250,
+  "variants": {
+    "ga": {
+      "optimizer": "ga",
+      "optimizer_params": {
+        "pop_size": 50
+      }
+    },
+    "ppo": {
+      "optimizer": "ppo",
+      "optimizer_params": {
+        "n_envs": 1,
+        "n_steps": 2048,
+        "batch_size": 64,
+        "n_epochs": 10,
+        "learning_rate": 0.0003,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "clip_range": 0.2,
+        "ent_coef": 0.0,
+        "vf_coef": 0.5,
+        "max_grad_norm": 0.5,
+        "policy_kwargs": {
+          "log_std_init": -1.0
+        }
+      }
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H12",
+      "a": "ppo",
+      "b": "ga",
+      "metric": "test_distance",
+      "direction": "greater",
+      "text": "At an equal 15M-step budget, PPO on the same 15->16->4 tanh brain reaches a higher held-out test-distance IQM than the genetic algorithm."
+    },
+    {
+      "id": "H13",
+      "a": "ppo",
+      "b": "ga",
+      "metric": "fall_rate",
+      "direction": "less",
+      "text": "At an equal 15M-step budget, PPO falls less often on the unseen steep test courses than the genetic algorithm."
+    }
+  ],
+  "hypotheses_tag": ""
+}

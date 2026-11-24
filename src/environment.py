@@ -46,7 +46,8 @@ def run_episode(env, brain, max_steps=600, pose_noise=None, on_step=None):
 
 class CreatureEnv:
     def __init__(self, fitness_mode="baseline", terrain=None, cpg_mode="cpg", cpg_rng=None, substeps=1,
-                 cpg_perm=None, knees=False, fall_rule="touch", guards=False):
+                 cpg_perm=None, knees=False, fall_rule="touch", guards=False, max_steps=600,
+                 fall_penalty=0.0):
         """terrain: TerrainSpec (default: the legacy course). cpg_mode replaces state[13:15]:
         cpg (clock), zeros, noise (U[-1,1] from cpg_rng), shuffled (the 30-step table read
         through cpg_perm, a fixed permutation chosen once per run). substeps>1 splits each step
@@ -57,7 +58,12 @@ class CreatureEnv:
         ends the episode) or "penalty" (reward -2 per touching step, no fall for touching).
         guards: opt-in physics guards. Hips are clamped like knees, an episode whose bodies move
         absurdly fast ends as `invalid` (no penalty, the triggering step earns nothing, distance
-        frozen at the last sane position, see score_x), and the stuck rule becomes progress based."""
+        frozen at the last sane position, see score_x), and the stuck rule becomes progress based.
+        max_steps: step budget; `env.truncated` is True on the step that hits it (a time limit,
+        not a real terminal state).
+        fall_penalty: reward subtracted on the step a fall is detected. The GA keeps its -100 in
+        run_episode (so fall_penalty stays 0 there); RL envs set it, so the agent is scored on
+        the same return as the GA."""
         if knees not in (False, True, "spot"):
             raise ValueError("knees must be False, True or 'spot'")
         if fall_rule not in ("touch", "penalty"):
@@ -78,6 +84,9 @@ class CreatureEnv:
         self.spot = knees == "spot"
         self.fall_rule = fall_rule
         self.guards = bool(guards)
+        self.max_steps = int(max_steps)
+        self.fall_penalty = float(fall_penalty)
+        self.truncated = False
         self.invalid = False
         self.last_sane_x = 400.0
         self.space = pymunk.Space()
@@ -264,6 +273,7 @@ class CreatureEnv:
         self.steps = 0
         self.still_steps = 0
         self.invalid = False
+        self.truncated = False
         self.last_sane_x = float(self.torso.position.x)
         self.x_hist = [self.last_sane_x]
         return self.get_state()
@@ -328,7 +338,11 @@ class CreatureEnv:
                      and self.x_hist[-1] - self.x_hist[-1 - STUCK_WINDOW] < STUCK_MIN_PROGRESS)
         else:
             stuck = self.still_steps > 60
-        done = self.steps > 600 or fallen or stuck
+        timed_out = self.steps >= self.max_steps
+        self.truncated = bool(timed_out and not (fallen or stuck))
+        if fallen and self.fall_penalty:
+            reward -= self.fall_penalty
+        done = timed_out or fallen or stuck
         return state, reward, done, fallen
         
 

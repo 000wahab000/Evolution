@@ -67,17 +67,20 @@ def split_terrain(cfg, split, terrain_seed):
                          min_slope=lo, name=f"{split}_{terrain_seed}")
 
 
-def train_scenarios(cfg, rng):
-    """k fresh train scenarios with friction x U[lo, hi] and N(0, pose_sigma) leg angles."""
+def sample_scenario(cfg, rng):
+    """One train-distribution scenario: random course, friction x U[lo, hi], N(0, pose_sigma)
+    leg angles, and a CPG seed."""
     p = cfg.perturbations
-    out = []
-    for _ in range(cfg.rollouts_k):
-        terrain = split_terrain(cfg, "train", int(rng.integers(2**31)))
-        friction = float(rng.uniform(*p["friction"])) if p.get("friction") else 1.0
-        sigma = p.get("pose_sigma", 0.0)
-        pose = tuple(rng.normal(0.0, sigma, 4)) if sigma else None
-        out.append(Scenario(terrain, friction, pose, int(rng.integers(2**31))))
-    return out
+    terrain = split_terrain(cfg, "train", int(rng.integers(2**31)))
+    friction = float(rng.uniform(*p["friction"])) if p.get("friction") else 1.0
+    sigma = p.get("pose_sigma", 0.0)
+    pose = tuple(rng.normal(0.0, sigma, 4)) if sigma else None
+    return Scenario(terrain, friction, pose, int(rng.integers(2**31)))
+
+
+def train_scenarios(cfg, rng):
+    """k fresh train scenarios, one draw of sample_scenario each."""
+    return [sample_scenario(cfg, rng) for _ in range(cfg.rollouts_k)]
 
 
 def fixed_scenarios(cfg, split):
@@ -91,18 +94,19 @@ def shuffle_perm(cfg):
     return make_rng(cfg.seed, "shuffle").permutation(30).tolist() if cfg.brain_input == "shuffled" else None
 
 
-def make_env(cfg, scenario, substeps=1):
+def make_env(cfg, scenario, substeps=1, fall_penalty=0.0, max_steps=600):
     return CreatureEnv(terrain=scenario.terrain.scaled_friction(scenario.friction_scale),
                        cpg_mode=cfg.brain_input, cpg_rng=make_rng(scenario.cpg_seed, "cpg"),
                        cpg_perm=shuffle_perm(cfg), substeps=substeps, knees=cfg.knees,
-                       fall_rule=cfg.fall_rule, guards=cfg.guards)
+                       fall_rule=cfg.fall_rule, guards=cfg.guards, max_steps=max_steps,
+                       fall_penalty=fall_penalty)
 
 
 def rollout(params, cfg, scenario, substeps=1, record=False):
     """One episode. Returns distance, fell, steps, energy (sum |action|), cot, return (the
     training reward incl. -100 on fall), plus per-step leg angles when record=True."""
     brain = CreatureBrain.from_state_dict(params if isinstance(params, dict) else from_flat(params))
-    env = make_env(cfg, scenario, substeps)
+    env = make_env(cfg, scenario, substeps, max_steps=cfg.max_steps)
     energy, legs = [0.0], []
 
     def on_step(env, action):
